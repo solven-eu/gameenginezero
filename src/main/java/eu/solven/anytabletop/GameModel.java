@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableMap;
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.agent.GamePlayers;
 import eu.solven.anytabletop.agent.HumanPlayer;
+import eu.solven.anytabletop.agent.HumanPlayerAwt;
 import eu.solven.anytabletop.agent.RobotAlwaysFirstOption;
 import eu.solven.anytabletop.map.IPlateau;
 import eu.solven.anytabletop.map.PlateauMap;
@@ -103,7 +104,7 @@ public class GameModel {
 
 	public GamePlayers generatePlayers(int nbPlayers) {
 		return new GamePlayers(Stream
-				.concat(Stream.of(new HumanPlayer(this)),
+				.concat(Stream.of(new HumanPlayerAwt(this)),
 						IntStream.range(1, nbPlayers).mapToObj(i -> new RobotAlwaysFirstOption(i)))
 				.collect(Collectors.toList()));
 	}
@@ -116,7 +117,26 @@ public class GameModel {
 		if (actions.isEmpty()) {
 			return currentState;
 		}
-		throw new IllegalStateException("TODO");
+
+		ParserContext parserContext = new ParserContext();
+
+		GameState newState = currentState;
+		for (Map<String, ?> action : actions.values()) {
+			Facts playerFacts = this.makeFacts(currentState);
+			playerFacts.put("player", "?");
+			PepperMapHelper.<IPlateauCoordinate>getRequiredAs(action, "coordinates").asMap().forEach(playerFacts::put);
+
+			List<String> intermediates = PepperMapHelper.getRequiredAs(action, "intermediate");
+
+			// Mutate with intermediate/hidden variables
+			Facts enrichedFacts = this.applyMutators(playerFacts, parserContext, intermediates);
+
+			this.applyMutators(enrichedFacts, parserContext, PepperMapHelper.getRequiredAs(action, "mutation"));
+
+			newState = PepperMapHelper.<GameMapInterpreter>getRequiredAs(playerFacts.asMap(), "map").getLatestState();
+		}
+
+		return newState;
 	}
 
 	public List<Map<String, ?>> nextPossibleActions(GameState currentState) {
