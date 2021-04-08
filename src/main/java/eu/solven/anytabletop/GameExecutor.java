@@ -1,5 +1,8 @@
 package eu.solven.anytabletop;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,6 +11,11 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder.ListMultimapBuilder;
 import com.google.common.collect.Multimaps;
@@ -20,7 +28,23 @@ public class GameExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameExecutor.class);
 
 	public static void main(String[] args) {
-		GameModel model = new GameModel();
+		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+		// https://manosnikolaidis.wordpress.com/2015/08/25/jackson-without-annotations/
+		mapper.registerModule(new ParameterNamesModule());
+		mapper.registerModule(new ParameterNamesModule());
+		// make private fields of Person visible to Jackson
+		mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+
+		InputStream inputStream = GameExecutor.class.getClassLoader().getResourceAsStream("checkers.yml");
+		GameInfo gameInfo;
+		try {
+			gameInfo = mapper.readValue(inputStream, GameInfo.class);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+
+		GameModel model = new GameModel(gameInfo);
 
 		GameState initialState = model.generateInitialState();
 		LOGGER.info("Initial state:");

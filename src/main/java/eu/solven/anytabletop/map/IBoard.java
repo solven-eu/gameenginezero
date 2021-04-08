@@ -4,7 +4,7 @@ import java.util.function.Consumer;
 
 import eu.solven.anytabletop.IPlateauCoordinate;
 
-public interface IPlateau {
+public interface IBoard {
 	String getType();
 
 	int getIntProperty(String key);

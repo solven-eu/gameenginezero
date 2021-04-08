@@ -6,10 +6,10 @@ import java.util.function.Consumer;
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.IPlateauCoordinate;
 
-public class PlateauMap implements IPlateau {
+public class BoardFromMap implements IBoard {
 	final Map<String, ?> map;
 
-	public PlateauMap(Map<String, ?> map) {
+	public BoardFromMap(Map<String, ?> map) {
 		this.map = map;
 	}
 
@@ -27,12 +27,15 @@ public class PlateauMap implements IPlateau {
 	public void forEach(Consumer<IPlateauCoordinate> coordinateConsumer) {
 		String type = getType();
 		if ("grid".equals(type)) {
-			int maxX = getIntProperty("maxX");
-			int maxY = getIntProperty("maxY");
+			int maxX = getIntProperty("width");
+			int maxY = getIntProperty("height");
 
 			for (int i = 0; i < maxX; i++) {
 				for (int j = 0; j < maxY; j++) {
-					coordinateConsumer.accept(new PlateauCoordinateAsMap(Map.of("oX", i, "oY", j)));
+					// Standard math coordinates
+					// 'x' grows by going right
+					// 'y' grows by going up
+					coordinateConsumer.accept(new PlateauCoordinateAsMap(Map.of("x", i, "y", j)));
 				}
 			}
 		} else {

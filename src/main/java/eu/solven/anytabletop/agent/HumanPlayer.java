@@ -59,7 +59,7 @@ public abstract class HumanPlayer implements IGameAgent {
 		do {
 			actionIndex = selectAction(currentState, possibleActions);
 
-			if (actionIndex < 0 || actionIndex > 0) {
+			if (actionIndex < 0 || actionIndex >= possibleActions.size()) {
 				LOGGER.warn("'{}'is not a valid option", actionIndex);
 			} else {
 				LOGGER.debug("'{}'is a valid option", actionIndex);

@@ -14,29 +14,32 @@ import org.jeasy.rules.api.Facts;
 import org.jeasy.rules.mvel.MVELAction;
 import org.jeasy.rules.mvel.MVELCondition;
 import org.mvel2.ParserContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.agent.GamePlayers;
-import eu.solven.anytabletop.agent.HumanPlayer;
 import eu.solven.anytabletop.agent.HumanPlayerAwt;
+import eu.solven.anytabletop.agent.PlayerPojo;
 import eu.solven.anytabletop.agent.RobotAlwaysFirstOption;
-import eu.solven.anytabletop.map.IPlateau;
-import eu.solven.anytabletop.map.PlateauMap;
+import eu.solven.anytabletop.map.BoardFromMap;
+import eu.solven.anytabletop.map.IBoard;
 import eu.solven.anytabletop.rules.FactMutator;
 
 public class GameModel {
+	private static final Logger LOGGER = LoggerFactory.getLogger(GameModel.class);
+
 	final int minNbPlayers = 2;
 	final int maxNbPlayers = 2;
 
-	final IPlateau plateau = new PlateauMap(Map.of("type", "grid", "maxX", 10, "maxY", 10));
+	final IBoard board;
 
 	final List<Map<String, ?>> parameters = Arrays.asList(Map.of("name", "maxX", "condition", List.of("maxX == 10")),
 			Map.of("name", "maxY", "condition", List.of("maxY == 10")));
 
-	final IStateProvider initialStateProvider = new DameStateProvider(plateau);
+	final IStateProvider initialStateProvider;
 
 	final List<Map<String, ?>> rendering = new ArrayList<>();
 
@@ -44,58 +47,25 @@ public class GameModel {
 
 	final List<Map<String, ?>> allowedMoves = new ArrayList<>();
 
-	public GameModel() {
-		rendering.add(Map.of("style", "border: black"));
-		rendering.add(Map.of("style", "bg: white", "condition", List.of("(i+j) % 2 == 0")));
-		rendering.add(Map.of("style", "bg: black", "condition", List.of("(i+j) % 2 == 1")));
+	// final List<Object> nextPlayers = new ArrayList<>();
 
-		rendering.add(Map.of("style", "item: white", "condition", List.of("map.charAt(oX,oY) == 'W'")));
-		rendering.add(Map.of("style", "item: black", "condition", List.of("map.charAt(oX,oY) == 'B'")));
+	final GameInfo gameInfo;
 
-		constants.put("maxX", 10);
-		constants.put("maxY", 10);
+	public GameModel(GameInfo gameInfo) {
+		this.gameInfo = gameInfo;
 
-		// Beware these conditions are evaluated first, else we may try checking a mapped value for invalid coordinates
-		List<String> moveConditions = List.of("tX>=0", "tX<maxX", "tY>=0", "tY<maxY");
-		{
-			List<String> mutations = List.of("map.charAt(oX,oY,' ')", "map.charAt(tX,tY,'W')");
-			List<String> whiteConditions = List.of("player.equals(\"w\")",
-					"map.charAt(oX,oY) == 'W'",
-					"map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'B'");
-			List<String> conditions =
-					ImmutableList.<String>builder().addAll(moveConditions).addAll(whiteConditions).build();
+		LOGGER.info("About to play a game of: {}", gameInfo.getName());
 
-			// White goes rightUp
-			{
-				List<String> intermediate = List.of("mutator.put('tX',oX+1)", "mutator.put('tY',oY+1)");
-				allowedMoves.add(Map.of("intermediate", intermediate, "condition", conditions, "mutation", mutations));
-			}
-			// White goes leftUp
-			{
-				List<String> intermediate = List.of("mutator.put('tX',oX-1)", "mutator.put('tY',oY+1)");
-				allowedMoves.add(Map.of("intermediate", intermediate, "condition", conditions, "mutation", mutations));
-			}
-		}
+		rendering.addAll(gameInfo.getRenderings());
 
-		{
-			List<String> mutations = List.of("map.charAt(oX,oY,' ')", "map.charAt(tX,tY,'B')");
-			List<String> whiteConditions = List.of("player.equals(\"b\")",
-					"map.charAt(oX,oY) == 'B'",
-					"map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'W'");
-			List<String> conditions =
-					ImmutableList.<String>builder().addAll(moveConditions).addAll(whiteConditions).build();
+		constants.putAll(gameInfo.getConstants());
 
-			// Black goes rightDown
-			{
-				List<String> intermediate = List.of("mutator.put('tX',oX+1)", "mutator.put('tY',oY-1)");
-				allowedMoves.add(Map.of("intermediate", intermediate, "condition", conditions, "mutation", mutations));
-			}
-			// Black goes leftDown
-			{
-				List<String> intermediate = List.of("mutator.put('tX',oX-1)", "mutator.put('tY',oY-1)");
-				allowedMoves.add(Map.of("intermediate", intermediate, "condition", conditions, "mutation", mutations));
-			}
-		}
+		// nextPlayers.addAll(gameInfo.getNextPlayers());
+
+		board = new BoardFromMap(gameInfo.getBoard());
+		initialStateProvider = new StateProviderFromMap(gameInfo);
+
+		allowedMoves.addAll(gameInfo.getAllowedMoves());
 	}
 
 	public GameState generateInitialState() {
@@ -123,7 +93,7 @@ public class GameModel {
 		GameState newState = currentState;
 		for (Map<String, ?> action : actions.values()) {
 			Facts playerFacts = this.makeFacts(currentState);
-			playerFacts.put("player", "?");
+			// playerFacts.put("player", "?");
 			PepperMapHelper.<IPlateauCoordinate>getRequiredAs(action, "coordinates").asMap().forEach(playerFacts::put);
 
 			List<String> intermediates = PepperMapHelper.getRequiredAs(action, "intermediate");
@@ -144,14 +114,11 @@ public class GameModel {
 
 		Facts facts = makeFacts(currentState);
 
-		// int maxX = PepperMapHelper.getRequiredNumber(currentState.getMetadata(), "maxX").intValue();
-		// int maxY = PepperMapHelper.getRequiredNumber(currentState.getMetadata(), "maxY").intValue();
-
 		List<Map<String, ?>> availableActions = new ArrayList<>();
 
 		ParserContext parserContext = new ParserContext();
 
-		plateau.forEach(coordinate -> {
+		board.forEach(coordinate -> {
 			coordinate.asMap().forEach(facts::put);
 
 			allowedMoves.forEach(move -> {
@@ -160,11 +127,11 @@ public class GameModel {
 				// Mutate with intermediate/hidden variables
 				Facts enrichedFacts = applyMutators(facts, parserContext, intermediates);
 
-				List<String> conditions = PepperMapHelper.getRequiredAs(move, "condition");
-				List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutation");
+				List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
+				List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
 				// List<String> validations = PepperMapHelper.getRequiredAs(move, "validation");
 
-				Stream.of("w", "b").forEach(player -> {
+				gameInfo.getPlayers().stream().map(PlayerPojo::getId).forEach(player -> {
 					Optional<String> allowedPlayers =
 							PepperMapHelper.getOptionalString(currentState.getMetadata(), "player");
 					if (allowedPlayers.isPresent() && !allowedPlayers.get().equals(player)) {
@@ -181,18 +148,12 @@ public class GameModel {
 					}
 
 					{
-						// Facts mutatedFacts = applyMutators(playerFacts, parserContext, mutations);
-
-						// boolean validated = logicalAnd(mutatedFacts, validations, parserContext);
-						//
-						// if (validated) {
 						availableActions.add(ImmutableMap.<String, Object>builder()
 								.put("player", player)
 								.put("coordinates", coordinate)
 								.put("mutation", mutations)
 								.put("intermediate", intermediates)
 								.build());
-						// }
 					}
 				});
 			});

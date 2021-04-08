@@ -1,5 +1,7 @@
 package eu.solven.anytabletop;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,6 +37,16 @@ public class GameMapInterpreter {
 		rows[rowIndex] = rows[rowIndex].substring(0, x) + c + rows[rowIndex].substring(x + 1);
 
 		mutatedState.set(new GameState(Stream.of(rows).collect(Collectors.joining(System.lineSeparator())),
-				originalState.getMetadata()));
+				latest.getMetadata()));
+	}
+
+	public void updateMetadata(String key, Object value) {
+		GameState latestState = mutatedState.get();
+
+		Map<String, Object> updatedMetadata = new LinkedHashMap<>();
+		updatedMetadata.putAll(latestState.getMetadata());
+		updatedMetadata.put(key, value);
+
+		mutatedState.set(new GameState(latestState.getState(), updatedMetadata));
 	}
 }

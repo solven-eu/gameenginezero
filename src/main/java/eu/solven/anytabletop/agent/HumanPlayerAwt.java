@@ -104,7 +104,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 
 		public void drawAscii(String ascii) {
 			// currentString = ascii;
-			LOGGER.info("Rendering:{}{}", System.lineSeparator(), ascii);
+			LOGGER.debug("Rendering:{}{}", System.lineSeparator(), ascii);
 			setText(ascii);
 		}
 	}
