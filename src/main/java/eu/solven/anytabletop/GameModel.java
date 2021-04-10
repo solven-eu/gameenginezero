@@ -21,9 +21,9 @@ import com.google.common.collect.ImmutableMap;
 
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.agent.GamePlayers;
-import eu.solven.anytabletop.agent.HumanPlayerAwt;
 import eu.solven.anytabletop.agent.PlayerPojo;
-import eu.solven.anytabletop.agent.RobotAlwaysFirstOption;
+import eu.solven.anytabletop.agent.human.HumanPlayerAwt;
+import eu.solven.anytabletop.agent.robot.RobotRandomOption;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
 import eu.solven.anytabletop.rules.FactMutator;
@@ -47,8 +47,6 @@ public class GameModel {
 
 	final List<Map<String, ?>> allowedMoves = new ArrayList<>();
 
-	// final List<Object> nextPlayers = new ArrayList<>();
-
 	final GameInfo gameInfo;
 
 	public GameModel(GameInfo gameInfo) {
@@ -60,12 +58,14 @@ public class GameModel {
 
 		constants.putAll(gameInfo.getConstants());
 
-		// nextPlayers.addAll(gameInfo.getNextPlayers());
-
 		board = new BoardFromMap(gameInfo.getBoard());
 		initialStateProvider = new StateProviderFromMap(gameInfo);
 
 		allowedMoves.addAll(gameInfo.getAllowedMoves());
+	}
+
+	public GameInfo getGameInfo() {
+		return gameInfo;
 	}
 
 	public GameState generateInitialState() {
@@ -75,7 +75,7 @@ public class GameModel {
 	public GamePlayers generatePlayers(int nbPlayers) {
 		return new GamePlayers(Stream
 				.concat(Stream.of(new HumanPlayerAwt(this)),
-						IntStream.range(1, nbPlayers).mapToObj(i -> new RobotAlwaysFirstOption(i)))
+						IntStream.range(1, nbPlayers).mapToObj(i -> new RobotRandomOption(123456789)))
 				.collect(Collectors.toList()));
 	}
 
@@ -110,8 +110,6 @@ public class GameModel {
 	}
 
 	public List<Map<String, ?>> nextPossibleActions(GameState currentState) {
-		// final String nextPlayer = PepperMapHelper.getRequiredString(currentState.getMetadata(), "player");
-
 		Facts facts = makeFacts(currentState);
 
 		List<Map<String, ?>> availableActions = new ArrayList<>();
@@ -186,7 +184,7 @@ public class GameModel {
 		return enrichedFacts;
 	}
 
-	private Facts cloneFacts(Facts facts) {
+	public static Facts cloneFacts(Facts facts) {
 		Facts mutatedFacts = new Facts();
 
 		// Copy current state before mutations
@@ -194,21 +192,7 @@ public class GameModel {
 		return mutatedFacts;
 	}
 
-	private boolean logicalOr(Facts facts, List<String> conditions, ParserContext parserContext) {
-		boolean conditionIsOk = false;
-
-		for (String condition : conditions) {
-			MVELCondition c = new MVELCondition(condition, parserContext);
-
-			if (c.evaluate(facts)) {
-				conditionIsOk = true;
-				break;
-			}
-		}
-		return conditionIsOk;
-	}
-
-	private boolean logicalAnd(Facts facts, List<String> conditions, ParserContext parserContext) {
+	public static boolean logicalAnd(Facts facts, List<String> conditions, ParserContext parserContext) {
 		boolean conditionIsOk = true;
 
 		for (String condition : conditions) {

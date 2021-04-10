@@ -1,4 +1,4 @@
-package eu.solven.anytabletop.agent;
+package eu.solven.anytabletop.agent.human;
 
 import java.util.List;
 import java.util.Map;

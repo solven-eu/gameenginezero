@@ -36,94 +36,109 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x+1)"
       - "mutator.put('tY',y+1)"
+      - "mutator.put('newPiece',y+1 == maxY - 1 ? 'X':'W')"
     conditions:
       - "tX>=0"
       - "tX<maxX"
       - "tY>=0"
       - "tY<maxY"
-      - "player.equals(\"w\")"
+      - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
       - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'B'"
     mutations:
       - "map.charAt(x,y,' ')"
-      - "map.charAt(tX,tY,'W')"
+      - "map.charAt(tX,tY,newPiece)"
       - "map.updateMetadata('player','b')"
   -
     comment: "White goes leftUp"
     intermediate:
       - "mutator.put('tX',x-1)"
       - "mutator.put('tY',y+1)"
+      - "mutator.put('newPiece',y+1 == maxY - 1 ? 'X':'W')"
     conditions:
       - "tX>=0"
       - "tX<maxX"
       - "tY>=0"
       - "tY<maxY"
-      - "player.equals(\"w\")"
+      - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
       - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'B'"
     mutations:
       - "map.charAt(x,y,' ')"
-      - "map.charAt(tX,tY,'W')"
+      - "map.charAt(tX,tY,newPiece)"
       - "map.updateMetadata('player','b')"
   -
     comment: "Black goes rightDown"
     intermediate:
       - "mutator.put('tX',x+1)"
       - "mutator.put('tY',y-1)"
+      - "mutator.put('newPiece',y == 0 ? 'C':'B')"
     conditions:
       - "tX>=0"
       - "tX<maxX"
       - "tY>=0"
       - "tY<maxY"
-      - "player.equals(\"w\")"
-      - "map.charAt(x,y) == 'W'"
-      - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'B'"
+      - "player.equals('b')"
+      - "map.charAt(x,y) == 'B'"
+      - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'W'"
     mutations:
       - "map.charAt(x,y,' ')"
-      - "map.charAt(tX,tY,'W')"
+      - "map.charAt(tX,tY,newPiece)"
       - "map.updateMetadata('player','w')"
   -
     comment: "Black goes leftDown"
     intermediate:
       - "mutator.put('tX',x-1)"
       - "mutator.put('tY',y-1)"
+      - "mutator.put('newPiece',y == 0 ? 'C':'B')"
     conditions:
       - "tX>=0"
       - "tX<maxX"
       - "tY>=0"
       - "tY<maxY"
-      - "player.equals(\"b\")"
+      - "player.equals('b')"
       - "map.charAt(x,y) == 'B'"
       - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'W'"
     mutations:
       - "map.charAt(x,y,' ')"
-      - "map.charAt(tX,tY,'B')"
+      - "map.charAt(tX,tY,newPiece)"
       - "map.updateMetadata('player','w')"
 
 rendering:
   - 
     comment: Black around the board
     style: "border: black"
+    conditions: 
+    - 
+      "true"
   - 
     comment: Bottom left is black
     style: "bg: black"
-    condition: 
+    conditions: 
     - 
-      "(i+j) % 2 == 0"
+      "(x+y) % 2 == 0"
   - 
     style: "bg: white"
-    condition: 
+    conditions: 
     - 
-      "(i+j) % 2 == 1"
-  - 
-    style: "border: black"
+      "(x+y) % 2 == 1"
   -
     style: "item: white"
-    condition: 
+    conditions: 
     - 
       "map.charAt(x,y) == 'W'"
   -
+    style: "item: doublewhite"
+    conditions: 
+    - 
+      "map.charAt(x,y) == 'X'"
+  -
     style: "item: black"
-    condition: 
+    conditions: 
     - 
       "map.charAt(x,y) == 'B'"
+  -
+    style: "item: doubleblack"
+    conditions: 
+    - 
+      "map.charAt(x,y) == 'C'"

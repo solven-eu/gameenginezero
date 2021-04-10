@@ -1,6 +1,5 @@
-package eu.solven.anytabletop.agent;
+package eu.solven.anytabletop.agent.human;
 
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -8,6 +7,7 @@ import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -49,11 +49,17 @@ public class HumanPlayerAwt extends HumanPlayer {
 	final AsciiTextArea tl;
 
 	final JButton goButton;
+	final AtomicBoolean isRandom = new AtomicBoolean();
+	final JButton goRandom;
 
 	final AtomicReference<CountDownLatch> refCdl = new AtomicReference<>();
 
+	final GameModel gameModel;
+
 	public HumanPlayerAwt(GameModel gameModel) {
 		super(gameModel);
+
+		this.gameModel = gameModel;
 
 		JFrame jf = new JFrame("Demo");
 		jf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -64,6 +70,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 
 		// Container cp = jf.getContentPane();
 		tl = new AsciiTextArea();
+		tl.setSize(200, 200);
 
 		// https://stackoverflow.com/questions/16279781/getting-jtextarea-to-display-fixed-width-font-without-antialiasing
 		tl.setFont(new Font("monospaced", Font.PLAIN, (int) (POINT_SIZE * 0.3F)));
@@ -79,22 +86,32 @@ public class HumanPlayerAwt extends HumanPlayer {
 
 		panel.add(optionsPanel);
 
-		jf.setSize(300, 200);
+		jf.setSize(300, 300);
 		jf.setVisible(true);
 
-		JButton goButton = new JButton("GO");
-		goButton.setPreferredSize(new Dimension(40, 40));
-		goButton.setBounds(0, 0, 50, 50);
+		JButton goButton = new JButton("Execute selected option");
+		// goButton.setPreferredSize(new Dimension(40, 40));
+		goButton.setBounds(0, 0, 20, 20);
+
+		JButton goRandom = new JButton("Execute random option");
+		// goRandom.setPreferredSize(new Dimension(40, 40));
+		goRandom.setBounds(0, 0, 20, 20);
 
 		goButton.addActionListener(e -> {
 			refCdl.get().countDown();
 		});
+		goRandom.addActionListener(e -> {
+			isRandom.set(true);
+			refCdl.get().countDown();
+		});
 
 		panel.add(goButton);
+		panel.add(goRandom);
 
 		this.panel = panel;
 		this.jf = jf;
 		this.goButton = goButton;
+		this.goRandom = goRandom;
 	}
 
 	private static class AsciiTextArea extends JTextArea {
@@ -169,7 +186,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 						int previousSelected = radioButtonSelected.getAndSet(ii);
 
 						if (previousSelected != ii) {
-							String s = toAscii(states.get(ii));
+							String s = toAscii(gameModel, states.get(ii));
 							tl.drawAscii(s);
 						}
 					}
@@ -197,7 +214,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 					state = currentState;
 				}
 
-				String s = toAscii(state);
+				String s = toAscii(gameModel, state);
 				tl.drawAscii(s);
 			} catch (RuntimeException e) {
 				LOGGER.warn("Issue in async task", e);
@@ -207,22 +224,19 @@ public class HumanPlayerAwt extends HumanPlayer {
 		CountDownLatch hasClickedGo = new CountDownLatch(1);
 
 		{
-			String s = toAscii(currentState);
+			String s = toAscii(gameModel, currentState);
 
 			// jf.setLayout(null);
 
 			tl.drawAscii(s);
 
 			String[] rows = s.split("[\r\n]");
-			int width = 300;
+			int width = 400;
 			int height = (width * rows.length) / rows[0].length();
 			panel.setSize(width, height);
 
 			refCdl.set(hasClickedGo);
-
-			goButton.addActionListener(e -> {
-				hasClickedGo.countDown();
-			});
+			isRandom.set(false);
 
 			// ensures the frame is the minimum size it needs to be
 			// in order display the components within it
@@ -243,7 +257,11 @@ public class HumanPlayerAwt extends HumanPlayer {
 
 		singleEs.shutdown();
 
-		return radioButtonSelected.get();
+		if (isRandom.get()) {
+			return new Random().nextInt(possibleActions.size());
+		} else {
+			return radioButtonSelected.get();
+		}
 	}
 
 }
