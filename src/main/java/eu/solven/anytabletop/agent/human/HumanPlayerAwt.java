@@ -186,7 +186,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 						int previousSelected = radioButtonSelected.getAndSet(ii);
 
 						if (previousSelected != ii) {
-							String s = toAscii(gameModel, states.get(ii));
+							String s = BoardAscii.toAscii(gameModel, states.get(ii));
 							tl.drawAscii(s);
 						}
 					}
@@ -214,7 +214,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 					state = currentState;
 				}
 
-				String s = toAscii(gameModel, state);
+				String s = BoardAscii.toAscii(gameModel, state);
 				tl.drawAscii(s);
 			} catch (RuntimeException e) {
 				LOGGER.warn("Issue in async task", e);
@@ -224,7 +224,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 		CountDownLatch hasClickedGo = new CountDownLatch(1);
 
 		{
-			String s = toAscii(gameModel, currentState);
+			String s = BoardAscii.toAscii(gameModel, currentState);
 
 			// jf.setLayout(null);
 

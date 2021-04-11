@@ -9,6 +9,12 @@ board:
   type: grid
   width: 10
   height: 10
+  values: 
+    - ""
+    - "W"
+    - "X"
+    - "B"
+    - "C"
 
 players:
   -
@@ -72,7 +78,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x+1)"
       - "mutator.put('tY',y-1)"
-      - "mutator.put('newPiece',y == 0 ? 'C':'B')"
+      - "mutator.put('newPiece',tY == 0 ? 'C':'B')"
     conditions:
       - "tX>=0"
       - "tX<maxX"
@@ -90,7 +96,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x-1)"
       - "mutator.put('tY',y-1)"
-      - "mutator.put('newPiece',y == 0 ? 'C':'B')"
+      - "mutator.put('newPiece',tY == 0 ? 'C':'B')"
     conditions:
       - "tX>=0"
       - "tX<maxX"
@@ -123,22 +129,22 @@ rendering:
     - 
       "(x+y) % 2 == 1"
   -
-    style: "item: white"
+    style: "item: light_man"
     conditions: 
     - 
       "map.charAt(x,y) == 'W'"
   -
-    style: "item: doublewhite"
+    style: "item: double_light_man"
     conditions: 
     - 
       "map.charAt(x,y) == 'X'"
   -
-    style: "item: black"
+    style: "item: dark_man"
     conditions: 
     - 
       "map.charAt(x,y) == 'B'"
   -
-    style: "item: doubleblack"
+    style: "item: double_dark_man"
     conditions: 
     - 
       "map.charAt(x,y) == 'C'"
