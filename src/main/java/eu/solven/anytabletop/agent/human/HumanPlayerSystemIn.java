@@ -9,6 +9,8 @@ import org.mvel2.ParserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Iterables;
+
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.GameMapInterpreter;
 import eu.solven.anytabletop.GameModel;
@@ -43,7 +45,8 @@ public class HumanPlayerSystemIn extends HumanPlayer {
 					List<String> intermediates = PepperMapHelper.getRequiredAs(actions, "intermediate");
 
 					// Mutate with intermediate/hidden variables
-					Facts enrichedFacts = gameModel.applyMutators(playerFacts, parserContext, intermediates);
+					List<Facts> allEnrichedFacts = gameModel.applyMutators(playerFacts, parserContext, intermediates);
+					Facts enrichedFacts = Iterables.getOnlyElement(allEnrichedFacts);
 
 					gameModel.applyMutators(enrichedFacts,
 							parserContext,

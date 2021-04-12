@@ -5,6 +5,21 @@ constants:
   maxX: 10
   maxY: 10
 
+constrains:
+  -
+    min: 0
+    max: 9
+    variables: 
+      - x
+      - tX
+      - y
+      - tY
+  -
+    min: 1
+    max: 9
+    variables: 
+      - n
+
 board:
   type: grid
   width: 10
@@ -35,7 +50,23 @@ setup:
     - "W W W W W "
     - " W W W W W"
     - "W W W W W "
-  
+
+win_conditions:
+  -
+    conditions:
+      - "step.equals('before_turn')"
+      - "player.equals('w')"
+      - "moves.isEmpty()"
+    mutations:
+      - "map.loser('w')"
+  -
+    conditions:
+      - "step.equals('before_turn')"
+      - "player.equals('b')"
+      - "moves.isEmpty()"
+    mutations:
+      - "map.loser('b')"
+
 allowed_moves:
   -
     comment: "White goes rightUp"
@@ -44,13 +75,9 @@ allowed_moves:
       - "mutator.put('tY',y+1)"
       - "mutator.put('newPiece',y+1 == maxY - 1 ? 'X':'W')"
     conditions:
-      - "tX>=0"
-      - "tX<maxX"
-      - "tY>=0"
-      - "tY<maxY"
       - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
-      - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'B'"
+      - "map.charAt(tX,tY) != 'W' && map.charAt(tX,tY) != 'X'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
@@ -62,13 +89,26 @@ allowed_moves:
       - "mutator.put('tY',y+1)"
       - "mutator.put('newPiece',y+1 == maxY - 1 ? 'X':'W')"
     conditions:
-      - "tX>=0"
-      - "tX<maxX"
-      - "tY>=0"
-      - "tY<maxY"
       - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
-      - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'B'"
+      - "map.charAt(tX,tY) != 'W' && map.charAt(tX,tY) != 'X'"
+    mutations:
+      - "map.charAt(x,y,' ')"
+      - "map.charAt(tX,tY,newPiece)"
+      - "map.updateMetadata('player','b')"
+  -
+    comment: "CrownedWhite"
+    intermediate:
+      - "mutator.put('p',java.util.Arrays.asList(1,-1))"
+      - "mutator.put('q',java.util.Arrays.asList(1,-1))"
+      - "mutator.put('n','any')"
+      - "mutator.put('tX',x+(n*p))"
+      - "mutator.put('tY',y+(n*q))"
+      - "mutator.put('newPiece','X')"
+    conditions:
+      - "player.equals('w')"
+      - "map.charAt(x,y) == 'X'"
+      - "map.charAt(tX,tY) != 'W' && map.charAt(tX,tY) != 'X'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
@@ -80,13 +120,9 @@ allowed_moves:
       - "mutator.put('tY',y-1)"
       - "mutator.put('newPiece',tY == 0 ? 'C':'B')"
     conditions:
-      - "tX>=0"
-      - "tX<maxX"
-      - "tY>=0"
-      - "tY<maxY"
       - "player.equals('b')"
       - "map.charAt(x,y) == 'B'"
-      - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'W'"
+      - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
@@ -98,17 +134,30 @@ allowed_moves:
       - "mutator.put('tY',y-1)"
       - "mutator.put('newPiece',tY == 0 ? 'C':'B')"
     conditions:
-      - "tX>=0"
-      - "tX<maxX"
-      - "tY>=0"
-      - "tY<maxY"
       - "player.equals('b')"
       - "map.charAt(x,y) == 'B'"
-      - "map.charAt(tX,tY) == ' ' || map.charAt(tX,tY) == 'W'"
+      - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
       - "map.updateMetadata('player','w')"
+  -
+    comment: "CrownedDark"
+    intermediate:
+      - "mutator.put('p',java.util.Arrays.asList(1,-1))"
+      - "mutator.put('q',java.util.Arrays.asList(1,-1))"
+      - "mutator.put('n','any')"
+      - "mutator.put('tX',x+(n*p))"
+      - "mutator.put('tY',y+(n*q))"
+      - "mutator.put('newPiece','C')"
+    conditions:
+      - "player.equals('w')"
+      - "map.charAt(x,y) == 'C'"
+      - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
+    mutations:
+      - "map.charAt(x,y,' ')"
+      - "map.charAt(tX,tY,newPiece)"
+      - "map.updateMetadata('player','b')"
 
 rendering:
   - 

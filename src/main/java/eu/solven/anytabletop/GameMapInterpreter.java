@@ -25,7 +25,18 @@ public class GameMapInterpreter {
 		GameState latest = getLatestState();
 
 		String[] rows = latest.getState().split("[\r\n]+");
-		return rows[rows.length - y - 1].charAt(x);
+		int rowIndex = rows.length - y - 1;
+
+		if (rowIndex < 0 || rowIndex >= rows.length) {
+			throw new IllegalArgumentException("Invalid y=" + y);
+		}
+
+		String row = rows[rowIndex];
+
+		if (x < 0 || x > row.length()) {
+			throw new IllegalArgumentException("Invalid x=" + x);
+		}
+		return row.charAt(x);
 	}
 
 	public void charAt(int x, int y, char c) {

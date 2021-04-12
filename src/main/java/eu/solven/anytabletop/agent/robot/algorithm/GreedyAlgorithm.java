@@ -31,7 +31,7 @@ public class GreedyAlgorithm implements IOptionTaker {
 			return Optional.empty();
 		}
 
-		double maxValue = Double.MAX_VALUE;
+		double maxValue = Double.MIN_VALUE;
 		List<Map<String, ?>> selectedMove = new ArrayList<>();
 
 		// Consider each move
@@ -48,6 +48,8 @@ public class GreedyAlgorithm implements IOptionTaker {
 				selectedMove.clear();
 
 				maxValue = currentValue;
+				selectedMove.add(currentMove);
+			} else if (maxValue == currentValue) {
 				selectedMove.add(currentMove);
 			}
 		}

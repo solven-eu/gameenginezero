@@ -6,10 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.jeasy.rules.api.Fact;
 import org.jeasy.rules.api.Facts;
 import org.jeasy.rules.mvel.MVELAction;
 import org.jeasy.rules.mvel.MVELCondition;
@@ -17,13 +18,13 @@ import org.mvel2.ParserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 
 import cormoran.pepper.collection.PepperMapHelper;
-import eu.solven.anytabletop.agent.GamePlayers;
 import eu.solven.anytabletop.agent.PlayerPojo;
-import eu.solven.anytabletop.agent.human.HumanPlayerAwt;
-import eu.solven.anytabletop.agent.robot.RobotRandomOption;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
 import eu.solven.anytabletop.rules.FactMutator;
@@ -72,14 +73,36 @@ public class GameModel {
 		return initialStateProvider.generateInitialState();
 	}
 
-	public GamePlayers generatePlayers(int nbPlayers) {
-		return new GamePlayers(Stream
-				.concat(Stream.of(new HumanPlayerAwt(this)),
-						IntStream.range(1, nbPlayers).mapToObj(i -> new RobotRandomOption(123456789)))
-				.collect(Collectors.toList()));
-	}
-
 	public boolean isGameOver(GameState currentState) {
+		Facts facts = this.makeFacts(currentState);
+
+		facts.put("set", "before_turn");
+
+		ParserContext parserContext = new ParserContext();
+		gameInfo.getWinConditions().stream().filter(c -> {
+			List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
+
+			Set<String> variables = facts.asMap().keySet();
+
+			List<String> winningPlayers = gameInfo.getPlayers().stream().map(PlayerPojo::getId).filter(player -> {
+				Facts playerFacts = cloneFacts(facts);
+				playerFacts.put("player", player);
+
+				List<String> allConditions = ImmutableList.<String>builder()
+						.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+						.addAll(conditions)
+						.build();
+
+				return logicalAnd(playerFacts, allConditions, parserContext);
+			}).collect(Collectors.toList());
+
+			// - "step.equals()"
+			// - "player.equals('b')"
+			// - "moves.isEmpty()"
+
+			return !winningPlayers.isEmpty();
+		});
+
 		return false;
 	}
 
@@ -99,7 +122,10 @@ public class GameModel {
 			List<String> intermediates = PepperMapHelper.getRequiredAs(action, "intermediate");
 
 			// Mutate with intermediate/hidden variables
-			Facts enrichedFacts = this.applyMutators(playerFacts, parserContext, intermediates);
+			List<Facts> asList = this.applyMutators(playerFacts, parserContext, intermediates);
+
+			// It would be an error to have multiple options as output of the selected option
+			Facts enrichedFacts = Iterables.getOnlyElement(asList);
 
 			this.applyMutators(enrichedFacts, parserContext, PepperMapHelper.getRequiredAs(action, "mutation"));
 
@@ -123,42 +149,65 @@ public class GameModel {
 				List<String> intermediates = PepperMapHelper.getRequiredAs(move, "intermediate");
 
 				// Mutate with intermediate/hidden variables
-				Facts enrichedFacts = applyMutators(facts, parserContext, intermediates);
+				applyMutators(facts, parserContext, intermediates).forEach(enrichedFacts -> {
 
-				List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
-				List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
-				// List<String> validations = PepperMapHelper.getRequiredAs(move, "validation");
+					List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
+					List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
+					// List<String> validations = PepperMapHelper.getRequiredAs(move, "validation");
 
-				gameInfo.getPlayers().stream().map(PlayerPojo::getId).forEach(player -> {
-					Optional<String> allowedPlayers =
-							PepperMapHelper.getOptionalString(currentState.getMetadata(), "player");
-					if (allowedPlayers.isPresent() && !allowedPlayers.get().equals(player)) {
-						return;
-					}
+					gameInfo.getPlayers().stream().map(PlayerPojo::getId).forEach(player -> {
+						Optional<String> allowedPlayers =
+								PepperMapHelper.getOptionalString(currentState.getMetadata(), "player");
+						if (allowedPlayers.isPresent() && !allowedPlayers.get().equals(player)) {
+							return;
+						}
 
-					Facts playerFacts = cloneFacts(enrichedFacts);
-					playerFacts.put("player", player);
+						Facts playerFacts = cloneFacts(enrichedFacts);
+						playerFacts.put("player", player);
 
-					boolean conditionIsOk = logicalAnd(playerFacts, conditions, parserContext);
+						Set<String> variables = playerFacts.asMap().keySet();
 
-					if (!conditionIsOk) {
-						return;
-					}
+						List<String> allConditions = ImmutableList.<String>builder()
+								.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+								.addAll(conditions)
+								.build();
 
-					{
-						availableActions.add(ImmutableMap.<String, Object>builder()
-								.put("player", player)
-								.put("coordinates", coordinate)
-								.put("mutation", mutations)
-								.put("intermediate", intermediates)
-								.build());
-					}
+						boolean conditionIsOk = logicalAnd(playerFacts, allConditions, parserContext);
+
+						if (!conditionIsOk) {
+							return;
+						}
+
+						{
+							availableActions.add(ImmutableMap.<String, Object>builder()
+									.put("player", player)
+									.put("coordinates", coordinate)
+									.put("mutation", mutations)
+									.put("intermediate", intermediates)
+									.build());
+						}
+					});
 				});
 			});
 		});
 
 		// May be empty when waiting for an external events: e.g. during an animation
 		return availableActions;
+	}
+
+	private List<? extends String> constrainsToConditions(List<Map<String, ?>> constrains, Set<String> usedVariables) {
+
+		return constrains.stream().flatMap(constrain -> {
+			List<String> variables = PepperMapHelper.getRequiredAs(constrain, "variables");
+
+			Set<String> relevantVariables =
+					Sets.intersection(usedVariables, variables.stream().collect(Collectors.toSet()));
+
+			int min = PepperMapHelper.getRequiredNumber(constrain, "min").intValue();
+			int max = PepperMapHelper.getRequiredNumber(constrain, "max").intValue();
+
+			return relevantVariables.stream().flatMap(v -> Stream.of(v + ">=" + min, v + "<" + max));
+		}).collect(Collectors.toList());
 	}
 
 	public Facts makeFacts(GameState state) {
@@ -171,17 +220,69 @@ public class GameModel {
 		return facts;
 	}
 
-	public Facts applyMutators(Facts facts, ParserContext parserContext, List<String> mutations) {
-		Facts enrichedFacts = cloneFacts(facts);
+	public List<Facts> applyMutators(Facts facts, ParserContext parserContext, List<String> mutations) {
+		// Some mutators will generate a set of possible outputs
+		List<Facts> outputfacts = new ArrayList<>();
 
-		// Add a mutator, enabling mutation
-		enrichedFacts.put("mutator", new FactMutator(enrichedFacts));
-		for (String mutation : mutations) {
-			MVELAction action = new MVELAction(mutation, parserContext);
+		{
+			Facts enrichedFacts = cloneFacts(facts);
 
-			action.execute(enrichedFacts);
+			// Add a mutator, enabling mutation
+			enrichedFacts.put("mutator", new FactMutator(enrichedFacts));
+
+			outputfacts.add(enrichedFacts);
 		}
-		return enrichedFacts;
+
+		for (String mutation : mutations) {
+			MVELAction action;
+			try {
+				action = new MVELAction(mutation, parserContext);
+			} catch (RuntimeException e) {
+				throw new IllegalArgumentException("Issue with mutation: [[" + mutation + "]]", e);
+			}
+
+			List<Facts> outputfacts2 = new ArrayList<>();
+
+			outputfacts.forEach(f -> {
+				action.execute(f);
+
+				List<Fact<?>> simpleFacts = new ArrayList<>();
+				Map<String, List<?>> listFacts = new LinkedHashMap<>();
+				f.forEach(fact -> {
+					Object factValue = fact.getValue();
+					if (factValue instanceof List<?>) {
+						listFacts.put(fact.getName(), (List<?>) factValue);
+					} else {
+						simpleFacts.add(fact);
+					}
+				});
+
+				if (listFacts.isEmpty()) {
+					outputfacts2.add(f);
+				} else {
+					List<Set<Map.Entry<String, ?>>> sets = new ArrayList<>();
+
+					listFacts.entrySet().forEach(e -> {
+						Set<Map.Entry<String, ?>> set =
+								e.getValue().stream().map(o -> Map.entry(e.getKey(), o)).collect(Collectors.toSet());
+
+						sets.add(set);
+					});
+
+					Sets.cartesianProduct(sets).forEach(tuple -> {
+						Facts clone = new Facts();
+
+						simpleFacts.forEach(clone::add);
+
+						tuple.forEach(e -> clone.put(e.getKey(), e.getValue()));
+					});
+				}
+			});
+
+			outputfacts.clear();
+			outputfacts.addAll(outputfacts2);
+		}
+		return outputfacts;
 	}
 
 	public static Facts cloneFacts(Facts facts) {

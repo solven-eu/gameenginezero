@@ -24,10 +24,13 @@ import javax.swing.JRadioButton;
 import javax.swing.JTextArea;
 import javax.swing.WindowConstants;
 
+import org.jeasy.rules.api.Fact;
 import org.jeasy.rules.api.Facts;
 import org.mvel2.ParserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Iterables;
 
 import cormoran.pepper.collection.PepperMapHelper;
 import cormoran.pepper.thread.PepperExecutorsHelper;
@@ -163,7 +166,8 @@ public class HumanPlayerAwt extends HumanPlayer {
 				List<String> intermediates = PepperMapHelper.getRequiredAs(actions, "intermediate");
 
 				// Mutate with intermediate/hidden variables
-				Facts enrichedFacts = gameModel.applyMutators(playerFacts, parserContext, intermediates);
+				List<Facts> allEnrichedFacts = gameModel.applyMutators(playerFacts, parserContext, intermediates);
+				Facts enrichedFacts = Iterables.getOnlyElement(allEnrichedFacts);
 
 				gameModel.applyMutators(enrichedFacts,
 						parserContext,
