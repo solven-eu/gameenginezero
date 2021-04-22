@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
 
+import cormoran.pepper.collection.PepperMapHelper;
+
 public class StateProviderFromMap implements IStateProvider {
 	private static final String EOL = System.lineSeparator();
 
@@ -18,11 +20,18 @@ public class StateProviderFromMap implements IStateProvider {
 
 	@Override
 	public GameState generateInitialState() {
-		String plateau = ((List<String>) gameInfo.getSetup().get("board")).stream().collect(Collectors.joining(EOL));
+		Map<String, ?> setup = gameInfo.getSetup();
+
+		return loadState(setup);
+	}
+
+	@Override
+	public GameState loadState(Map<String, ?> setup) {
+		String plateau = ((List<String>) setup.get("board")).stream().collect(Collectors.joining(EOL));
 
 		Map<String, Object> metadata = new LinkedHashMap<>();
 		metadata.putAll(gameInfo.getConstants());
-		metadata.put("player", gameInfo.getSetup().get("player"));
+		metadata.putAll(PepperMapHelper.getRequiredMap(setup, "metadata"));
 
 		return new GameState(plateau, ImmutableMap.copyOf(metadata));
 	}

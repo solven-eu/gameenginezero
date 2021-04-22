@@ -40,7 +40,7 @@ public class GameModel {
 	final List<Map<String, ?>> parameters = Arrays.asList(Map.of("name", "maxX", "condition", List.of("maxX == 10")),
 			Map.of("name", "maxY", "condition", List.of("maxY == 10")));
 
-	final IStateProvider initialStateProvider;
+	final IStateProvider gameStateManager;
 
 	final List<Map<String, ?>> rendering = new ArrayList<>();
 
@@ -60,7 +60,7 @@ public class GameModel {
 		constants.putAll(gameInfo.getConstants());
 
 		board = new BoardFromMap(gameInfo.getBoard());
-		initialStateProvider = new StateProviderFromMap(gameInfo);
+		gameStateManager = new StateProviderFromMap(gameInfo);
 
 		allowedMoves.addAll(gameInfo.getAllowedMoves());
 	}
@@ -70,7 +70,15 @@ public class GameModel {
 	}
 
 	public GameState generateInitialState() {
-		return initialStateProvider.generateInitialState();
+		return gameStateManager.generateInitialState();
+	}
+
+	public GameState loadState(Map<String, ?> setup) {
+		return gameStateManager.loadState(setup);
+	}
+
+	public IBoard getBoard() {
+		return board;
 	}
 
 	public boolean isGameOver(GameState currentState) {
@@ -143,55 +151,66 @@ public class GameModel {
 		ParserContext parserContext = new ParserContext();
 
 		board.forEach(coordinate -> {
-			coordinate.asMap().forEach(facts::put);
+			availableActions.addAll(nextPossibleActions(currentState, facts, parserContext, coordinate));
+		});
 
-			allowedMoves.forEach(move -> {
-				List<String> intermediates = PepperMapHelper.getRequiredAs(move, "intermediate");
+		// May be empty when waiting for an external events: e.g. during an animation
+		return availableActions;
+	}
 
-				// Mutate with intermediate/hidden variables
-				applyMutators(facts, parserContext, intermediates).forEach(enrichedFacts -> {
+	public List<Map<String, ?>> nextPossibleActions(GameState currentState,
+			Facts facts,
+			ParserContext parserContext,
+			IPlateauCoordinate coordinate) {
+		List<Map<String, ?>> availableActions = new ArrayList<>();
 
-					List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
-					List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
-					// List<String> validations = PepperMapHelper.getRequiredAs(move, "validation");
+		coordinate.asMap().forEach(facts::put);
 
-					gameInfo.getPlayers().stream().map(PlayerPojo::getId).forEach(player -> {
-						Optional<String> allowedPlayers =
-								PepperMapHelper.getOptionalString(currentState.getMetadata(), "player");
-						if (allowedPlayers.isPresent() && !allowedPlayers.get().equals(player)) {
-							return;
-						}
+		Optional<String> allowedPlayers = PepperMapHelper.getOptionalString(currentState.getMetadata(), "player");
 
-						Facts playerFacts = cloneFacts(enrichedFacts);
-						playerFacts.put("player", player);
+		allowedMoves.forEach(move -> {
+			List<String> intermediates = PepperMapHelper.getRequiredAs(move, "intermediate");
 
-						Set<String> variables = playerFacts.asMap().keySet();
+			// Mutate with intermediate/hidden variables
+			applyMutators(facts, parserContext, intermediates).forEach(enrichedFacts -> {
 
-						List<String> allConditions = ImmutableList.<String>builder()
-								.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
-								.addAll(conditions)
-								.build();
+				List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
+				List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
+				// List<String> validations = PepperMapHelper.getRequiredAs(move, "validation");
 
-						boolean conditionIsOk = logicalAnd(playerFacts, allConditions, parserContext);
+				gameInfo.getPlayers().stream().map(PlayerPojo::getId).forEach(player -> {
+					if (allowedPlayers.isPresent() && !allowedPlayers.get().equals(player)) {
+						return;
+					}
 
-						if (!conditionIsOk) {
-							return;
-						}
+					Facts playerFacts = cloneFacts(enrichedFacts);
+					playerFacts.put("player", player);
 
-						{
-							availableActions.add(ImmutableMap.<String, Object>builder()
-									.put("player", player)
-									.put("coordinates", coordinate)
-									.put("mutation", mutations)
-									.put("intermediate", intermediates)
-									.build());
-						}
-					});
+					Set<String> variables = playerFacts.asMap().keySet();
+
+					List<String> allConditions = ImmutableList.<String>builder()
+							.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+							.addAll(conditions)
+							.build();
+
+					boolean conditionIsOk = logicalAnd(playerFacts, allConditions, parserContext);
+
+					if (!conditionIsOk) {
+						return;
+					}
+
+					{
+						availableActions.add(ImmutableMap.<String, Object>builder()
+								.put("player", player)
+								.put("coordinates", coordinate)
+								.put("mutation", mutations)
+								.put("intermediate", intermediates)
+								.build());
+					}
 				});
 			});
 		});
 
-		// May be empty when waiting for an external events: e.g. during an animation
 		return availableActions;
 	}
 
@@ -203,8 +222,8 @@ public class GameModel {
 			Set<String> relevantVariables =
 					Sets.intersection(usedVariables, variables.stream().collect(Collectors.toSet()));
 
-			int min = PepperMapHelper.getRequiredNumber(constrain, "min").intValue();
-			int max = PepperMapHelper.getRequiredNumber(constrain, "max").intValue();
+			int min = PepperMapHelper.getRequiredNumber(constrain, "minIncluded").intValue();
+			int max = PepperMapHelper.getRequiredNumber(constrain, "maxExcluded").intValue();
 
 			return relevantVariables.stream().flatMap(v -> Stream.of(v + ">=" + min, v + "<" + max));
 		}).collect(Collectors.toList());

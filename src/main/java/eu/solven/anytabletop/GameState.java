@@ -40,5 +40,16 @@ public class GameState {
 	public void diffTo(GameState to) {
 		LOGGER.info("from: {}", this);
 		LOGGER.info("to: {}", to);
+	}
+
+	/**
+	 * This is useful for tests where a state may not be fully expressed
+	 * 
+	 * @param other
+	 * @return
+	 */
+	public boolean containsAll(GameState other) {
+		return this.state.equals(other.getState())
+				&& this.metadata.entrySet().containsAll(other.getMetadata().entrySet());
 	};
 }

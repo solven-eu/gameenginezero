@@ -7,16 +7,16 @@ constants:
 
 constrains:
   -
-    min: 0
-    max: 9
+    minIncluded: 0
+    maxExcluded: 10
     variables: 
       - x
       - tX
       - y
       - tY
   -
-    min: 1
-    max: 9
+    minIncluded: 1
+    maxExcluded: 9
     variables: 
       - n
 
@@ -38,7 +38,8 @@ players:
     id: b
 
 setup:
-  player: w
+  metadata:
+    player: w
   board:
     - " B B B B B"
     - "B B B B B "
@@ -73,7 +74,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x+1)"
       - "mutator.put('tY',y+1)"
-      - "mutator.put('newPiece',y+1 == maxY - 1 ? 'X':'W')"
+      - "mutator.put('newPiece',tY == maxY - 1 ? 'X':'W')"
     conditions:
       - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
@@ -87,7 +88,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x-1)"
       - "mutator.put('tY',y+1)"
-      - "mutator.put('newPiece',y+1 == maxY - 1 ? 'X':'W')"
+      - "mutator.put('newPiece',tY == maxY - 1 ? 'X':'W')"
     conditions:
       - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"

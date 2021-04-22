@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder.ListMultimapBuilder;
@@ -22,8 +23,7 @@ import eu.solven.anytabletop.rules.GameRulesLoader;
 public class GameExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameExecutor.class);
 
-	public static void main(String[] args) {
-		final ClassPathResource rulesResource = new ClassPathResource("checkers.yml");
+	public static void playGame(final Resource rulesResource) {
 		final GameInfo gameInfo = GameRulesLoader.loadRules(rulesResource);
 
 		final GameModel model = new GameModel(gameInfo);

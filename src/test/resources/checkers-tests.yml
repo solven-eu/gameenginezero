@@ -1,0 +1,61 @@
+allowed_transitions:
+- description: "BUG-XXX"
+  from:
+    metadata:
+      player: 'w'
+    board: 
+    - " B B B B B"
+    - "W W       "
+    - "       W B"
+    - "  W       "
+    - "          "
+    - "        W "
+    - "         W"
+    - "  B     B "
+    - "         W"
+    - "  C C     "
+  to:
+    metadata:
+      player: 'b'
+    board: 
+    - " B B B B B"
+    - "W W       "
+    - "       W B"
+    - "  W       "
+    - "         W"
+    - "          "
+    - "         W"
+    - "  B     B "
+    - "         W"
+    - "  C C     "
+
+forbidden_transitions:
+- description: "BUG-XXX"
+  from:
+    metadata:
+      player: 'w'
+    board: 
+    - " B B B B B"
+    - "B B B B B "
+    - " B B B B B"
+    - "B B B B B "
+    - "          "
+    - "          "
+    - " W W W W W"
+    - "W W W W W "
+    - " W W W W W"
+    - "W W W W W "
+  to:
+    metadata:
+      player: 'b'
+    board: 
+    - " B B B B B"
+    - "B B B B B "
+    - " B B B B B"
+    - "B B B B B "
+    - " W        "
+    - "          "
+    - "   W W W W"
+    - "W W W W W "
+    - " W W W W W"
+    - "W W W W W "

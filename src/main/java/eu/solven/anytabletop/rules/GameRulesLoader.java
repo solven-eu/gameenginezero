@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
+import anytabletop.unittests.AllowedTransitions;
 import eu.solven.anytabletop.GameInfo;
 
 public class GameRulesLoader {
@@ -33,6 +34,28 @@ public class GameRulesLoader {
 				throw new UncheckedIOException(e);
 			}
 			return gameInfo;
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	public static AllowedTransitions loadAllowedTransitions(Resource tests) {
+		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+		// https://manosnikolaidis.wordpress.com/2015/08/25/jackson-without-annotations/
+		mapper.registerModule(new ParameterNamesModule());
+		mapper.registerModule(new ParameterNamesModule());
+		// make private fields of Person visible to Jackson
+		mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+
+		try (InputStream inputStream = tests.getInputStream()) {
+			AllowedTransitions allowedTransitions;
+			try {
+				allowedTransitions = mapper.readValue(inputStream, AllowedTransitions.class);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+			return allowedTransitions;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
