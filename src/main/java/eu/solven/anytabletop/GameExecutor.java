@@ -7,17 +7,16 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder.ListMultimapBuilder;
 import com.google.common.collect.Multimaps;
 
-import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.agent.human.HumanPlayerAwt;
 import eu.solven.anytabletop.agent.robot.RobotRandomOption;
+import eu.solven.anytabletop.choice.IAgentChoice;
 import eu.solven.anytabletop.rules.GameRulesLoader;
 
 public class GameExecutor {
@@ -33,7 +32,7 @@ public class GameExecutor {
 
 		Map<String, IGameAgent> playerIdToAgent = new LinkedHashMap<>();
 
-		playerIdToAgent.put("w", new HumanPlayerAwt(model));
+		playerIdToAgent.put("w", new HumanPlayerAwt("w", model));
 		playerIdToAgent.put("b", new RobotRandomOption(123456789));
 
 		new GameExecutor().playTheGame(model, initialState, playerIdToAgent);
@@ -47,28 +46,31 @@ public class GameExecutor {
 		while (true) {
 			GameState currentState = mutatingState;
 
-			if (model.isGameOver(currentState)) {
-				LOGGER.info("GameOver (explicit)");
-				break;
-			}
+			// All actions, for any agent
+			List<IAgentChoice> allPossibleActions = model.nextPossibleActions(currentState);
 
-			List<Map<String, ?>> allPossibleActions = model.nextPossibleActions(currentState);
-
-			if (allPossibleActions.isEmpty()) {
-				LOGGER.info("GameOver (no action available)");
-				break;
-			}
-
-			ListMultimap<String, Map<String, ?>> agentToActions =
+			// Each agent may have some actions
+			ListMultimap<String, IAgentChoice> agentToActions =
 					ListMultimapBuilder.hashKeys().arrayListValues().build();
 
-			allPossibleActions
-					.forEach(action -> agentToActions.put(PepperMapHelper.getRequiredString(action, "player"), action));
+			allPossibleActions.forEach(action -> agentToActions.put(action.getPlayerId(), action));
 
-			Map<String, Map<String, ?>> playerToSelectedActions = new LinkedHashMap<>();
+			if (model.isGameOver(currentState)) {
+				LOGGER.info("GameOver (explicit)");
+				model.notifyGameOverToPlayers(playerIdToAgent, currentState, agentToActions);
+				break;
+			} else if (agentToActions.isEmpty()) {
+				// TODO Some game may require to wait for some time before an action is possible by any agent
+				LOGGER.warn("???GameOver??? (no action available)");
+				model.notifyGameOverToPlayers(playerIdToAgent, currentState, agentToActions);
+				break;
+			}
+
+			// Let each agent choose an action
+			Map<String, IAgentChoice> playerToSelectedActions = new LinkedHashMap<>();
 
 			Multimaps.asMap(agentToActions).forEach((playerId, possibleActions) -> {
-				Optional<Map<String, ?>> optAction =
+				Optional<IAgentChoice> optAction =
 						playerIdToAgent.get(playerId).pickAction(currentState, possibleActions);
 
 				if (optAction.isPresent()) {

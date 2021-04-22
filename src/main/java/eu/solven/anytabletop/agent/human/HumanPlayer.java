@@ -1,7 +1,6 @@
 package eu.solven.anytabletop.agent.human;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -10,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import eu.solven.anytabletop.GameModel;
 import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.IGameAgent;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 public abstract class HumanPlayer implements IGameAgent {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HumanPlayer.class);
@@ -20,7 +20,7 @@ public abstract class HumanPlayer implements IGameAgent {
 	}
 
 	@Override
-	public Optional<Map<String, ?>> pickAction(GameState currentState, List<Map<String, ?>> possibleActions) {
+	public Optional<IAgentChoice> pickAction(GameState currentState, List<IAgentChoice> possibleActions) {
 		int actionIndex;
 		do {
 			actionIndex = selectAction(currentState, possibleActions);
@@ -36,5 +36,5 @@ public abstract class HumanPlayer implements IGameAgent {
 		return Optional.of(possibleActions.get(actionIndex));
 	}
 
-	protected abstract int selectAction(GameState currentState, List<Map<String, ?>> possibleActions);
+	protected abstract int selectAction(GameState currentState, List<IAgentChoice> possibleActions);
 }

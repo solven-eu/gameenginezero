@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,10 +22,15 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Sets;
 
 import cormoran.pepper.collection.PepperMapHelper;
+import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.agent.PlayerPojo;
+import eu.solven.anytabletop.choice.AgentChoice;
+import eu.solven.anytabletop.choice.GameChoiceInterpreter;
+import eu.solven.anytabletop.choice.IAgentChoice;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
 import eu.solven.anytabletop.rules.FactMutator;
@@ -39,6 +45,8 @@ public class GameModel {
 
 	final List<Map<String, ?>> parameters = Arrays.asList(Map.of("name", "maxX", "condition", List.of("maxX == 10")),
 			Map.of("name", "maxY", "condition", List.of("maxY == 10")));
+
+	final ParserContext parserContext = new ParserContext();
 
 	final IStateProvider gameStateManager;
 
@@ -86,8 +94,7 @@ public class GameModel {
 
 		facts.put("set", "before_turn");
 
-		ParserContext parserContext = new ParserContext();
-		gameInfo.getWinConditions().stream().filter(c -> {
+		gameInfo.getGameoverConditions().stream().filter(c -> {
 			List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
 
 			Set<String> variables = facts.asMap().keySet();
@@ -114,55 +121,55 @@ public class GameModel {
 		return false;
 	}
 
-	public GameState applyActions(GameState currentState, Map<String, Map<String, ?>> actions) {
+	/**
+	 * @param currentState
+	 * @param actions
+	 *            each agent can select a single action
+	 * @return
+	 */
+	public GameState applyActions(GameState currentState, Map<String, IAgentChoice> actions) {
 		if (actions.isEmpty()) {
 			return currentState;
 		}
 
-		ParserContext parserContext = new ParserContext();
-
 		GameState newState = currentState;
-		for (Map<String, ?> action : actions.values()) {
-			Facts playerFacts = this.makeFacts(currentState);
-			// playerFacts.put("player", "?");
-			PepperMapHelper.<IPlateauCoordinate>getRequiredAs(action, "coordinates").asMap().forEach(playerFacts::put);
-
-			List<String> intermediates = PepperMapHelper.getRequiredAs(action, "intermediate");
-
-			// Mutate with intermediate/hidden variables
-			List<Facts> asList = this.applyMutators(playerFacts, parserContext, intermediates);
-
-			// It would be an error to have multiple options as output of the selected option
-			Facts enrichedFacts = Iterables.getOnlyElement(asList);
-
-			this.applyMutators(enrichedFacts, parserContext, PepperMapHelper.getRequiredAs(action, "mutation"));
-
-			newState = PepperMapHelper.<GameMapInterpreter>getRequiredAs(playerFacts.asMap(), "map").getLatestState();
+		for (IAgentChoice action : actions.values()) {
+			newState = applyChoice(currentState, action);
 		}
 
 		return newState;
 	}
 
-	public List<Map<String, ?>> nextPossibleActions(GameState currentState) {
+	public GameState applyChoice(GameState currentState, IAgentChoice action) {
+		Facts playerFacts = this.makeFacts(currentState);
+		action.getCoordinate().asMap().forEach(playerFacts::put);
+
+		// Mutate with intermediate/hidden variables
+		List<Facts> asList = this.applyMutators(playerFacts, action.getIntermediates());
+
+		// It would be an error to have multiple options as output of the selected option
+		Facts enrichedFacts = Iterables.getOnlyElement(asList);
+
+		this.applyMutators(enrichedFacts, action.getMutations());
+
+		return PepperMapHelper.<GameMapInterpreter>getRequiredAs(playerFacts.asMap(), "map").getLatestState();
+	}
+
+	public List<IAgentChoice> nextPossibleActions(GameState currentState) {
 		Facts facts = makeFacts(currentState);
 
-		List<Map<String, ?>> availableActions = new ArrayList<>();
-
-		ParserContext parserContext = new ParserContext();
+		List<IAgentChoice> availableActions = new ArrayList<>();
 
 		board.forEach(coordinate -> {
-			availableActions.addAll(nextPossibleActions(currentState, facts, parserContext, coordinate));
+			availableActions.addAll(nextPossibleActions(currentState, facts, coordinate));
 		});
 
 		// May be empty when waiting for an external events: e.g. during an animation
 		return availableActions;
 	}
 
-	public List<Map<String, ?>> nextPossibleActions(GameState currentState,
-			Facts facts,
-			ParserContext parserContext,
-			IPlateauCoordinate coordinate) {
-		List<Map<String, ?>> availableActions = new ArrayList<>();
+	public List<IAgentChoice> nextPossibleActions(GameState currentState, Facts facts, IPlateauCoordinate coordinate) {
+		List<IAgentChoice> availableActions = new ArrayList<>();
 
 		coordinate.asMap().forEach(facts::put);
 
@@ -172,7 +179,7 @@ public class GameModel {
 			List<String> intermediates = PepperMapHelper.getRequiredAs(move, "intermediate");
 
 			// Mutate with intermediate/hidden variables
-			applyMutators(facts, parserContext, intermediates).forEach(enrichedFacts -> {
+			applyMutators(facts, intermediates).forEach(enrichedFacts -> {
 
 				List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
 				List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
@@ -200,12 +207,7 @@ public class GameModel {
 					}
 
 					{
-						availableActions.add(ImmutableMap.<String, Object>builder()
-								.put("player", player)
-								.put("coordinates", coordinate)
-								.put("mutation", mutations)
-								.put("intermediate", intermediates)
-								.build());
+						availableActions.add(new AgentChoice(player, coordinate, mutations, intermediates));
 					}
 				});
 			});
@@ -214,6 +216,14 @@ public class GameModel {
 		return availableActions;
 	}
 
+	/**
+	 * We restrict constrain to relevant variables, as it is meaning-less to check x>= is 0 does not exist in current
+	 * context.
+	 * 
+	 * @param constrains
+	 * @param usedVariables
+	 * @return
+	 */
 	private List<? extends String> constrainsToConditions(List<Map<String, ?>> constrains, Set<String> usedVariables) {
 
 		return constrains.stream().flatMap(constrain -> {
@@ -239,7 +249,7 @@ public class GameModel {
 		return facts;
 	}
 
-	public List<Facts> applyMutators(Facts facts, ParserContext parserContext, List<String> mutations) {
+	public List<Facts> applyMutators(Facts facts, List<String> mutations) {
 		// Some mutators will generate a set of possible outputs
 		List<Facts> outputfacts = new ArrayList<>();
 
@@ -324,6 +334,72 @@ public class GameModel {
 			}
 		}
 		return conditionIsOk;
+	}
+
+	/**
+	 * This should be called only when the game is over (what ever the reason (game rules, a player is not responding, a
+	 * player resigned, ...))
+	 * 
+	 * @param playerIdToAgent
+	 * @param currentState
+	 * @param availableChoices
+	 */
+	public void notifyGameOverToPlayers(Map<String, IGameAgent> playerIdToAgent,
+			GameState currentState,
+			ListMultimap<String, IAgentChoice> availableChoices) {
+		GameChoiceInterpreter interpreter = new GameChoiceInterpreter(availableChoices);
+
+		Facts baseFacts = this.makeFacts(currentState);
+		baseFacts.put("moves", interpreter);
+
+		playerIdToAgent.forEach((playerId, agent) -> {
+			// List<IAgentChoice> choices = availableChoices.get(playerId);
+
+			AtomicBoolean lose = new AtomicBoolean();
+			AtomicBoolean win = new AtomicBoolean();
+
+			gameInfo.getGameoverConditions().forEach(c -> {
+				if (lose.get() || win.get()) {
+					// We must not consider additional rules
+					return;
+				}
+
+				List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
+
+				Facts playerFacts = cloneFacts(baseFacts);
+				playerFacts.put("player", playerId);
+
+				Set<String> variables = playerFacts.asMap().keySet();
+
+				List<String> allConditions = ImmutableList.<String>builder()
+						.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+						.addAll(conditions)
+						.build();
+
+				boolean trigger = logicalAnd(playerFacts, allConditions, parserContext);
+
+				if (trigger) {
+
+				}
+			});
+
+			// List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
+			//
+			// Set<String> variables = facts.asMap().keySet();
+			//
+			// List<String> winningPlayers = gameInfo.getPlayers().stream().map(PlayerPojo::getId).filter(player -> {
+			// Facts playerFacts = cloneFacts(facts);
+			// playerFacts.put("player", player);
+			//
+			// List<String> allConditions = ImmutableList.<String>builder()
+			// .addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+			// .addAll(conditions)
+			// .build();
+			//
+			// return logicalAnd(playerFacts, allConditions, parserContext);
+			// }).collect(Collectors.toList());
+
+		});
 	}
 
 }

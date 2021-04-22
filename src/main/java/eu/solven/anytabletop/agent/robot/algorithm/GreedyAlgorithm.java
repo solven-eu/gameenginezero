@@ -8,6 +8,7 @@ import java.util.Optional;
 import eu.solven.anytabletop.GameModel;
 import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.robot.evaluation.IGameStateEvaluator;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 /**
  * Will consider any possible 1-move, and keep the one maximizing the {@link IGameStateEvaluator}
@@ -22,21 +23,21 @@ import eu.solven.anytabletop.agent.robot.evaluation.IGameStateEvaluator;
 public class GreedyAlgorithm implements IOptionTaker {
 
 	@Override
-	public Optional<Map<String, ?>> pickBestOption(IGameStateEvaluator gateStateEvaluator,
+	public Optional<IAgentChoice> pickBestOption(IGameStateEvaluator gateStateEvaluator,
 			GameModel gameModel,
 			GameState currentState,
 			String player,
-			List<Map<String, ?>> possibleActions) {
+			List<IAgentChoice> possibleActions) {
 		if (possibleActions.isEmpty()) {
 			return Optional.empty();
 		}
 
 		double maxValue = Double.MIN_VALUE;
-		List<Map<String, ?>> selectedMove = new ArrayList<>();
+		List<IAgentChoice> selectedMove = new ArrayList<>();
 
 		// Consider each move
 		for (int i = 0; i < possibleActions.size(); i++) {
-			Map<String, ?> currentMove = possibleActions.get(i);
+			IAgentChoice currentMove = possibleActions.get(i);
 
 			// Compute the consecutive state
 			GameState newState = gameModel.applyActions(currentState, Map.of(player, currentMove));

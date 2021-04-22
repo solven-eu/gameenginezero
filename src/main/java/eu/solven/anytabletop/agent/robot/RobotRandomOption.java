@@ -1,12 +1,12 @@
 package eu.solven.anytabletop.agent.robot;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 
 import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.IGameAgent;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 /**
  * A robot selecting an action random. Its behavior can be determinist by configuring with a constant seed.
@@ -22,7 +22,7 @@ public class RobotRandomOption implements IGameAgent {
 	}
 
 	@Override
-	public Optional<Map<String, ?>> pickAction(GameState currentState, List<Map<String, ?>> possibleActions) {
+	public Optional<IAgentChoice> pickAction(GameState currentState, List<IAgentChoice> possibleActions) {
 		if (possibleActions.isEmpty()) {
 			return Optional.empty();
 		} else {

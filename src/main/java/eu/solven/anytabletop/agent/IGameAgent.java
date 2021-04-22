@@ -1,13 +1,13 @@
 package eu.solven.anytabletop.agent;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import eu.solven.anytabletop.GameState;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 public interface IGameAgent {
 
-	Optional<Map<String, ?>> pickAction(GameState currentState, List<Map<String, ?>> possibleActions);
+	Optional<IAgentChoice> pickAction(GameState currentState, List<IAgentChoice> possibleActions);
 
 }

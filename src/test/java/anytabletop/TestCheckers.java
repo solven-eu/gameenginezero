@@ -1,7 +1,6 @@
 package anytabletop;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,7 +9,6 @@ import java.util.stream.Collectors;
 
 import org.jeasy.rules.api.Facts;
 import org.junit.jupiter.api.Test;
-import org.mvel2.ParserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -33,6 +31,7 @@ import eu.solven.anytabletop.agent.robot.RobotRandomOption;
 import eu.solven.anytabletop.agent.robot.RobotWithAlgorithm;
 import eu.solven.anytabletop.agent.robot.algorithm.GreedyAlgorithm;
 import eu.solven.anytabletop.agent.robot.evaluation.MaximumEntropyEvaluation;
+import eu.solven.anytabletop.choice.IAgentChoice;
 import eu.solven.anytabletop.rules.GameRulesLoader;
 
 public class TestCheckers {
@@ -67,7 +66,7 @@ public class TestCheckers {
 			GameState fromState = model.loadState(PepperMapHelper.getRequiredMap(allowed, "from"));
 			GameState toState = model.loadState(PepperMapHelper.getRequiredMap(allowed, "to"));
 
-			List<Map<String, ?>> allPossibleActions = model.nextPossibleActions(fromState);
+			List<IAgentChoice> allPossibleActions = model.nextPossibleActions(fromState);
 
 			List<GameState> possibleGameState = allPossibleActions.stream()
 					.map(a -> model.applyActions(fromState, Map.of("somePlayer", a)))
@@ -76,15 +75,11 @@ public class TestCheckers {
 			if (possibleGameState.stream().filter(gs -> gs.containsAll(toState)).findAny().isEmpty()) {
 				Map<IPlateauCoordinate, Map<String, Object>> concernedCoordinates =
 						computeDiffCoordinates(fromState, toState);
-				ParserContext parserContext = new ParserContext();
 
 				List<GameState> gameStates = concernedCoordinates.entrySet().stream().flatMap(e -> {
 					IPlateauCoordinate coordinate = e.getKey();
 					Facts facts = model.makeFacts(fromState);
-					List<Map<String, ?>> actions =
-							model.nextPossibleActions(fromState, facts, parserContext, coordinate);
-
-					System.out.println(actions);
+					List<IAgentChoice> actions = model.nextPossibleActions(fromState, facts, coordinate);
 
 					return actions.stream().map(a -> model.applyActions(fromState, Map.of("somePlayer", a)));
 				}).collect(Collectors.toList());
@@ -98,7 +93,7 @@ public class TestCheckers {
 			GameState fromState = model.loadState(PepperMapHelper.getRequiredMap(allowed, "from"));
 			GameState toState = model.loadState(PepperMapHelper.getRequiredMap(allowed, "to"));
 
-			List<Map<String, ?>> allPossibleActions = model.nextPossibleActions(fromState);
+			List<IAgentChoice> allPossibleActions = model.nextPossibleActions(fromState);
 
 			List<GameState> possibleGameState = allPossibleActions.stream()
 					.map(a -> model.applyActions(fromState, Map.of()))
@@ -136,10 +131,11 @@ public class TestCheckers {
 
 		AtomicLongMap<String> playerToWin = AtomicLongMap.create();
 
-		for (int i = 0; i < 1000; i++) {
+		GameExecutor gameExecutor = new GameExecutor();
+		for (int i = 0; i < 1; i++) {
 			GameState initialState = model.generateInitialState();
 
-			GameState gameOverState = new GameExecutor().playTheGame(model, initialState, robots);
+			GameState gameOverState = gameExecutor.playTheGame(model, initialState, robots);
 		}
 
 		playerToWin.asMap().forEach((player, wins) -> {

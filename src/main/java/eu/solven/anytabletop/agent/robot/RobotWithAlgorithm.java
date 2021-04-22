@@ -9,6 +9,7 @@ import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.agent.robot.algorithm.IOptionTaker;
 import eu.solven.anytabletop.agent.robot.evaluation.IGameStateEvaluator;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 /**
  * A robot selecting an action random. Its behavior can be determinist by configuring with a constant seed.
@@ -35,7 +36,7 @@ public class RobotWithAlgorithm implements IGameAgent {
 	}
 
 	@Override
-	public Optional<Map<String, ?>> pickAction(GameState currentState, List<Map<String, ?>> possibleActions) {
+	public Optional<IAgentChoice> pickAction(GameState currentState, List<IAgentChoice> possibleActions) {
 		return algorithm.pickBestOption(gameStateEvaluator, gameModel, currentState, player, possibleActions);
 	}
 

@@ -52,21 +52,13 @@ setup:
     - " W W W W W"
     - "W W W W W "
 
-win_conditions:
+gameover_conditions:
   -
     conditions:
-      - "step.equals('before_turn')"
-      - "player.equals('w')"
-      - "moves.isEmpty()"
+      # - "step.equals('before_turn')"
+      - "moves.isEmpty(player)"
     mutations:
-      - "map.loser('w')"
-  -
-    conditions:
-      - "step.equals('before_turn')"
-      - "player.equals('b')"
-      - "moves.isEmpty()"
-    mutations:
-      - "map.loser('b')"
+      - "map.loser(player)"
 
 allowed_moves:
   -

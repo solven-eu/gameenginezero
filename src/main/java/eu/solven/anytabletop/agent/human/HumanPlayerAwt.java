@@ -38,6 +38,7 @@ import eu.solven.anytabletop.GameMapInterpreter;
 import eu.solven.anytabletop.GameModel;
 import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.IPlateauCoordinate;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 public class HumanPlayerAwt extends HumanPlayer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HumanPlayerAwt.class);
@@ -54,15 +55,19 @@ public class HumanPlayerAwt extends HumanPlayer {
 	final JButton goButton;
 	final AtomicBoolean isRandom = new AtomicBoolean();
 	final JButton goRandom;
+	final JButton reset;
 
 	final AtomicReference<CountDownLatch> refCdl = new AtomicReference<>();
 
 	final GameModel gameModel;
 
-	public HumanPlayerAwt(GameModel gameModel) {
+	final String playerId;
+
+	public HumanPlayerAwt(String playerId, GameModel gameModel) {
 		super(gameModel);
 
 		this.gameModel = gameModel;
+		this.playerId = playerId;
 
 		JFrame jf = new JFrame("Demo");
 		jf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -96,14 +101,20 @@ public class HumanPlayerAwt extends HumanPlayer {
 		// goButton.setPreferredSize(new Dimension(40, 40));
 		goButton.setBounds(0, 0, 20, 20);
 
-		JButton goRandom = new JButton("Execute random option");
-		// goRandom.setPreferredSize(new Dimension(40, 40));
-		goRandom.setBounds(0, 0, 20, 20);
-
 		goButton.addActionListener(e -> {
 			refCdl.get().countDown();
 		});
+
+		JButton goRandom = new JButton("Execute random option");
+		// goRandom.setPreferredSize(new Dimension(40, 40));
+		goRandom.setBounds(0, 0, 20, 20);
 		goRandom.addActionListener(e -> {
+			isRandom.set(true);
+			refCdl.get().countDown();
+		});
+
+		reset = new JButton("Reset the game");
+		reset.addActionListener(e -> {
 			isRandom.set(true);
 			refCdl.get().countDown();
 		});
@@ -130,7 +141,7 @@ public class HumanPlayerAwt extends HumanPlayer {
 	}
 
 	@Override
-	protected int selectAction(GameState currentState, List<Map<String, ?>> possibleActions) {
+	protected int selectAction(GameState currentState, List<IAgentChoice> possibleActions) {
 		// LOGGER.info("Possible actions:");
 
 		ButtonGroup buttonGroup = new ButtonGroup();
@@ -154,27 +165,9 @@ public class HumanPlayerAwt extends HumanPlayer {
 			}
 
 			{
-				ParserContext parserContext = new ParserContext();
-				Map<String, ?> actions = possibleActions.get(i);
+				IAgentChoice actions = possibleActions.get(i);
 
-				Facts playerFacts = gameModel.makeFacts(currentState);
-				playerFacts.put("player", "?");
-				PepperMapHelper.<IPlateauCoordinate>getRequiredAs(actions, "coordinates")
-						.asMap()
-						.forEach(playerFacts::put);
-
-				List<String> intermediates = PepperMapHelper.getRequiredAs(actions, "intermediate");
-
-				// Mutate with intermediate/hidden variables
-				List<Facts> allEnrichedFacts = gameModel.applyMutators(playerFacts, parserContext, intermediates);
-				Facts enrichedFacts = Iterables.getOnlyElement(allEnrichedFacts);
-
-				gameModel.applyMutators(enrichedFacts,
-						parserContext,
-						PepperMapHelper.getRequiredAs(actions, "mutation"));
-
-				GameState state =
-						PepperMapHelper.<GameMapInterpreter>getRequiredAs(playerFacts.asMap(), "map").getLatestState();
+				GameState state = gameModel.applyChoice(currentState, actions);
 
 				states.add(state);
 			}

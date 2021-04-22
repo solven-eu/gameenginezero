@@ -28,6 +28,35 @@ allowed_transitions:
     - "  B     B "
     - "         W"
     - "  C C     "
+- description: "Can move Crowned units"
+  from:
+    metadata:
+      player: 'b'
+    board: 
+    - " X X X    "
+    - "  W       "
+    - "          "
+    - "          "
+    - " W        "
+    - "      W   "
+    - " W        "
+    - "          "
+    - "     B B  "
+    - "    C C C "
+  to:
+    metadata:
+      player: 'w'
+    board: 
+    - " X X X    "
+    - "  W       "
+    - "          "
+    - "          "
+    - " W        "
+    - "      W   "
+    - " W        "
+    - "          "
+    - "   C B B  "
+    - "      C C "
 
 forbidden_transitions:
 - description: "BUG-XXX"

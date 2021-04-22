@@ -16,6 +16,7 @@ import eu.solven.anytabletop.GameMapInterpreter;
 import eu.solven.anytabletop.GameModel;
 import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.IPlateauCoordinate;
+import eu.solven.anytabletop.choice.IAgentChoice;
 
 public class HumanPlayerSystemIn extends HumanPlayer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HumanPlayerSystemIn.class);
@@ -25,35 +26,17 @@ public class HumanPlayerSystemIn extends HumanPlayer {
 	}
 
 	@Override
-	protected int selectAction(GameState currentState, List<Map<String, ?>> possibleActions) {
+	protected int selectAction(GameState currentState, List<IAgentChoice> possibleActions) {
 		int actionIndex;
 
 		try (Scanner in = new Scanner(System.in)) {
 			do {
 				LOGGER.info("Possible actions:");
 
-				ParserContext parserContext = new ParserContext();
 				for (int i = 0; i < possibleActions.size(); i++) {
-					Map<String, ?> actions = possibleActions.get(i);
+					IAgentChoice actions = possibleActions.get(i);
 
-					Facts playerFacts = gameModel.makeFacts(currentState);
-					playerFacts.put("player", "?");
-					PepperMapHelper.<IPlateauCoordinate>getRequiredAs(actions, "coordinates")
-							.asMap()
-							.forEach(playerFacts::put);
-
-					List<String> intermediates = PepperMapHelper.getRequiredAs(actions, "intermediate");
-
-					// Mutate with intermediate/hidden variables
-					List<Facts> allEnrichedFacts = gameModel.applyMutators(playerFacts, parserContext, intermediates);
-					Facts enrichedFacts = Iterables.getOnlyElement(allEnrichedFacts);
-
-					gameModel.applyMutators(enrichedFacts,
-							parserContext,
-							PepperMapHelper.getRequiredAs(actions, "mutation"));
-
-					GameState state = PepperMapHelper.<GameMapInterpreter>getRequiredAs(playerFacts.asMap(), "map")
-							.getLatestState();
+					GameState state = gameModel.applyChoice(currentState, actions);
 
 					// states.add(state);
 					currentState.diffTo(state);
