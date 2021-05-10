@@ -19,6 +19,11 @@ public class GameMapInterpreter {
 		return mutatedState.get();
 	}
 
+	@Override
+	public String toString() {
+		return "GameMapInterpreter";
+	}
+
 	// x is the usual mathematical x: it grows by going right
 	// y is the usual mathematical y: it grows by going up
 	public char charAt(int x, int y) {

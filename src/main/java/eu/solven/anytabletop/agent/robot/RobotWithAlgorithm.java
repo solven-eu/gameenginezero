@@ -37,7 +37,7 @@ public class RobotWithAlgorithm implements IGameAgent {
 
 	@Override
 	public Optional<IAgentChoice> pickAction(GameState currentState, List<IAgentChoice> possibleActions) {
-		return algorithm.pickBestOption(gameStateEvaluator, gameModel, currentState, player, possibleActions);
+		return algorithm.pickBestOption(gameStateEvaluator, currentState, player, possibleActions);
 	}
 
 }

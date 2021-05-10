@@ -4,7 +4,7 @@ import java.util.Map;
 
 import eu.solven.anytabletop.IPlateauCoordinate;
 
-public class PlateauCoordinateAsMap implements IPlateauCoordinate {
+public final class PlateauCoordinateAsMap implements IPlateauCoordinate {
 
 	final Map<String, ?> map;
 

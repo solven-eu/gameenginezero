@@ -46,14 +46,7 @@ public class GameExecutor {
 		while (true) {
 			GameState currentState = mutatingState;
 
-			// All actions, for any agent
-			List<IAgentChoice> allPossibleActions = model.nextPossibleActions(currentState);
-
-			// Each agent may have some actions
-			ListMultimap<String, IAgentChoice> agentToActions =
-					ListMultimapBuilder.hashKeys().arrayListValues().build();
-
-			allPossibleActions.forEach(action -> agentToActions.put(action.getPlayerId(), action));
+			ListMultimap<String, IAgentChoice> agentToActions = computeEachAgentChoices(model, currentState);
 
 			if (model.isGameOver(currentState)) {
 				LOGGER.info("GameOver (explicit)");
@@ -79,7 +72,7 @@ public class GameExecutor {
 					// TODO Enable a tweak for noop. One may add manually noop as an option in its gameModel
 					// LOGGER.info("GameOver (no action picked by " + playerId + ")");
 
-					model.nextPossibleActions(currentState);
+					model.nextPossibleActions(currentState, playerId);
 
 					// break;
 					throw new IllegalArgumentException("We require a move to be selected");
@@ -93,5 +86,17 @@ public class GameExecutor {
 		}
 
 		return mutatingState;
+	}
+
+	public static ListMultimap<String, IAgentChoice> computeEachAgentChoices(final GameModel model,
+			GameState currentState) {
+		// Each agent may have some actions
+		ListMultimap<String, IAgentChoice> agentToActions = ListMultimapBuilder.hashKeys().arrayListValues().build();
+
+		model.getGameInfo().getPlayers().forEach(player -> {
+			String playerId = player.getId();
+			agentToActions.putAll(playerId, model.nextPossibleActions(currentState, playerId));
+		});
+		return agentToActions;
 	}
 }

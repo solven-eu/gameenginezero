@@ -10,4 +10,6 @@ public interface IBoard {
 	int getIntProperty(String key);
 
 	void forEach(Consumer<IPlateauCoordinate> coordinateConsumer);
+
+	// Stream<IPlateauCoordinate> stream();
 }

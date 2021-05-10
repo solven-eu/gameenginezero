@@ -1,9 +1,9 @@
 name: Checkers
 source: http://www.lecomptoirdesjeux.com/regle-jeu-dames.htm
 
-constants:
-  maxX: 10
-  maxY: 10
+#constants:
+#  maxX: 10
+#  maxY: 10
 
 constrains:
   -
@@ -66,7 +66,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x+1)"
       - "mutator.put('tY',y+1)"
-      - "mutator.put('newPiece',tY == maxY - 1 ? 'X':'W')"
+      - "mutator.put('newPiece',tY == board.getIntProperty('height') - 1 ? 'X':'W')"
     conditions:
       - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
@@ -80,7 +80,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('tX',x-1)"
       - "mutator.put('tY',y+1)"
-      - "mutator.put('newPiece',tY == maxY - 1 ? 'X':'W')"
+      - "mutator.put('newPiece',tY == board.getIntProperty('height') - 1 ? 'X':'W')"
     conditions:
       - "player.equals('w')"
       - "map.charAt(x,y) == 'W'"
@@ -94,7 +94,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('p',java.util.Arrays.asList(1,-1))"
       - "mutator.put('q',java.util.Arrays.asList(1,-1))"
-      - "mutator.put('n','any')"
+      - "mutator.put('n',java.util.stream.IntStream.range(1, board.getIntProperty('height')).toArray())"
       - "mutator.put('tX',x+(n*p))"
       - "mutator.put('tY',y+(n*q))"
       - "mutator.put('newPiece','X')"
@@ -139,18 +139,18 @@ allowed_moves:
     intermediate:
       - "mutator.put('p',java.util.Arrays.asList(1,-1))"
       - "mutator.put('q',java.util.Arrays.asList(1,-1))"
-      - "mutator.put('n','any')"
+      - "mutator.put('n',java.util.stream.IntStream.range(1, board.getIntProperty('height')).toArray())"
       - "mutator.put('tX',x+(n*p))"
       - "mutator.put('tY',y+(n*q))"
       - "mutator.put('newPiece','C')"
     conditions:
-      - "player.equals('w')"
+      - "player.equals('b')"
       - "map.charAt(x,y) == 'C'"
       - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','b')"
+      - "map.updateMetadata('player','w')"
 
 rendering:
   - 

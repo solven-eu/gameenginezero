@@ -16,8 +16,8 @@ import eu.solven.anytabletop.choice.IAgentChoice;
 public class MaximumEntropyEvaluation implements IGameStateEvaluator {
 
 	@Override
-	public double evaluate(GameModel gameModel, GameState state, String player) {
-		List<IAgentChoice> allPossibleActions = gameModel.nextPossibleActions(state);
+	public double evaluate(GameModel gameModel, GameState state, String playerId) {
+		List<IAgentChoice> allPossibleActions = gameModel.nextPossibleActions(state, playerId);
 
 		return allPossibleActions.size();
 	}

@@ -21,6 +21,7 @@ import com.indvd00m.ascii.render.elements.Rectangle;
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.GameInfo;
 import eu.solven.anytabletop.GameModel;
+import eu.solven.anytabletop.GameModelHelpers;
 import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
@@ -72,9 +73,9 @@ public class BoardAscii {
 			renderings.forEach(rendering -> {
 				List<String> conditions = PepperMapHelper.getRequiredAs(rendering, "conditions");
 
-				Facts renderingFacts = GameModel.cloneFacts(facts);
+				Facts renderingFacts = GameModelHelpers.cloneFacts(facts);
 
-				boolean conditionIsOk = GameModel.logicalAnd(renderingFacts, conditions, parserContext);
+				boolean conditionIsOk = GameModelHelpers.logicalAnd(renderingFacts, conditions, parserContext);
 
 				if (conditionIsOk) {
 					String style = PepperMapHelper.getRequiredAs(rendering, "style");

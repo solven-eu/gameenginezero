@@ -1,11 +1,12 @@
 package eu.solven.anytabletop;
 
 import java.util.Map;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GameState {
+public final class GameState {
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameState.class);
 
 	final String state;
@@ -48,8 +49,29 @@ public class GameState {
 	 * @param other
 	 * @return
 	 */
-	public boolean containsAll(GameState other) {
+	public boolean containsState(GameState other) {
 		return this.state.equals(other.getState())
 				&& this.metadata.entrySet().containsAll(other.getMetadata().entrySet());
-	};
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(metadata, state);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		GameState other = (GameState) obj;
+		return Objects.equals(metadata, other.metadata) && Objects.equals(state, other.state);
+	}
+
 }

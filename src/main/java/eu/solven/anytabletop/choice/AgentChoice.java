@@ -40,4 +40,17 @@ public class AgentChoice implements IAgentChoice {
 	public List<String> getMutations() {
 		return mutations;
 	}
+
+	@Override
+	public String toString() {
+		return "AgentChoice [player=" + player
+				+ ", coordinate="
+				+ coordinate
+				+ ", mutations="
+				+ mutations
+				+ ", intermediates="
+				+ intermediates
+				+ "]";
+	}
+
 }

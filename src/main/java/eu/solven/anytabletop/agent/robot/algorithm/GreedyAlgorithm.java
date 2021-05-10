@@ -22,9 +22,14 @@ import eu.solven.anytabletop.choice.IAgentChoice;
 // multiple of our position looks equivalent. (is this equivalent to alpha-beta pruning?)
 public class GreedyAlgorithm implements IOptionTaker {
 
+	final GameModel gameModel;
+
+	public GreedyAlgorithm(GameModel gameModel) {
+		this.gameModel = gameModel;
+	}
+
 	@Override
 	public Optional<IAgentChoice> pickBestOption(IGameStateEvaluator gateStateEvaluator,
-			GameModel gameModel,
 			GameState currentState,
 			String player,
 			List<IAgentChoice> possibleActions) {
