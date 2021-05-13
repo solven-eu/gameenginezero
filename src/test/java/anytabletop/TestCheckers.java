@@ -5,10 +5,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.assertj.core.api.Assertions;
 import org.jeasy.rules.api.Facts;
+//import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +30,6 @@ import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.IPlateauCoordinate;
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.agent.robot.RobotRandomOption;
-import eu.solven.anytabletop.agent.robot.RobotWithAlgorithm;
-import eu.solven.anytabletop.agent.robot.algorithm.GreedyAlgorithm;
-import eu.solven.anytabletop.agent.robot.evaluation.MaximumEntropyEvaluation;
 import eu.solven.anytabletop.choice.IAgentChoice;
 import eu.solven.anytabletop.rules.GameRulesLoader;
 
@@ -42,24 +40,6 @@ public class TestCheckers {
 	final GameInfo gameInfo = GameRulesLoader.loadRules(rulesResource);
 
 	final GameModel model = new GameModel(gameInfo);
-
-	// protected Map<String, IGameAgent> generateAgents(GameModel model, Function<String, IGameAgent> playerIdToAgent) {
-	// Map<String, IGameAgent> playerIdToAgent = new LinkedHashMap<>();
-	//
-	// model.getGameInfo().getPlayers().forEach(p -> {
-	// IGameAgent robot = playerIdToAgent.get(p);
-	// if (playerIdToAgent.isEmpty()) {
-	// robot = new RobotWithAlgorithm(p.getId(),
-	// model,
-	// new MaximumEntropyEvaluation(),
-	// new GreedyAlgorithm(model));
-	// } else {
-	// robot = new RobotRandomOption(123);
-	// }
-	// playerIdToAgent.put(p.getId(), robot);
-	// });
-	// return playerIdToAgent;
-	// }
 
 	protected Map<String, IGameAgent> generateRandomRobots(GameModel model) {
 		Map<String, IGameAgent> playerIdToAgent = new LinkedHashMap<>();
@@ -188,6 +168,65 @@ public class TestCheckers {
 	}
 
 	@Test
+	public void testInitialState() throws JsonParseException, JsonMappingException, IOException {
+		GameState initialState = model.generateInitialState();
+
+		Assertions.assertThat(model.isGameOver(initialState)).isFalse();
+
+		// Next is white
+		Assertions.assertThat(model.nextPossibleActions(initialState, "w")).isNotEmpty();
+		Assertions.assertThat(model.nextPossibleActions(initialState, "b")).isEmpty();
+	}
+
+	@Test
+	public void testAfter1RandomTurns() throws JsonParseException, JsonMappingException, IOException {
+		Map<String, IGameAgent> robots = generateRandomRobots(model);
+
+		GameExecutor gameExecutor = new GameExecutor();
+		GameState initialState = model.generateInitialState();
+
+		GameState stateAfterTurns = gameExecutor.playTheGame(model, initialState, robots, 1);
+
+		Assertions.assertThat(model.isGameOver(stateAfterTurns)).isFalse();
+
+		// Next is Black
+		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "w")).isEmpty();
+		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "b")).isNotEmpty();
+	}
+
+	@Test
+	public void testAfter2RandomTurns() throws JsonParseException, JsonMappingException, IOException {
+		Map<String, IGameAgent> robots = generateRandomRobots(model);
+
+		GameExecutor gameExecutor = new GameExecutor();
+		GameState initialState = model.generateInitialState();
+
+		GameState stateAfterTurns = gameExecutor.playTheGame(model, initialState, robots, 2);
+
+		Assertions.assertThat(model.isGameOver(stateAfterTurns)).isFalse();
+
+		// Next is white
+		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "w")).isNotEmpty();
+		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "b")).isEmpty();
+	}
+
+	@Test
+	public void testAfter3RandomTurns() throws JsonParseException, JsonMappingException, IOException {
+		Map<String, IGameAgent> robots = generateRandomRobots(model);
+
+		GameExecutor gameExecutor = new GameExecutor();
+		GameState initialState = model.generateInitialState();
+
+		GameState stateAfterTurns = gameExecutor.playTheGame(model, initialState, robots, 3);
+
+		Assertions.assertThat(model.isGameOver(stateAfterTurns)).isFalse();
+
+		// Next is white
+		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "w")).isEmpty();
+		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "b")).isNotEmpty();
+	}
+
+	@Test
 	public void testAlgorithmVersusRandom() throws JsonParseException, JsonMappingException, IOException {
 		Map<String, IGameAgent> robots = generateRandomRobots(model);
 
@@ -197,7 +236,7 @@ public class TestCheckers {
 		for (int i = 0; i < 1; i++) {
 			GameState initialState = model.generateInitialState();
 
-			GameState gameOverState = gameExecutor.playTheGame(model, initialState, robots);
+			GameState gameOverState = gameExecutor.playTheGame(model, initialState, robots, 5);
 		}
 
 		playerToWin.asMap().forEach((player, wins) -> {

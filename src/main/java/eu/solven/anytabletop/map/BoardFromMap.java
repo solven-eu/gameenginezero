@@ -3,10 +3,14 @@ package eu.solven.anytabletop.map;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.jeasy.rules.api.Facts;
+
 import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.IPlateauCoordinate;
 
 public class BoardFromMap implements IBoard {
+	public static final String WILDCARD = "<any>";
+
 	final Map<String, ?> map;
 
 	public BoardFromMap(Map<String, ?> map) {
@@ -41,7 +45,17 @@ public class BoardFromMap implements IBoard {
 		} else {
 			throw new IllegalStateException("Not managed type: " + type);
 		}
+	}
 
+	@Override
+	public void wildcard(Facts boardWildcardFacts) {
+		String type = getType();
+		if ("grid".equals(type)) {
+			boardWildcardFacts.put("x", WILDCARD);
+			boardWildcardFacts.put("y", WILDCARD);
+		} else {
+			throw new IllegalStateException("Not managed type: " + type);
+		}
 	}
 
 }

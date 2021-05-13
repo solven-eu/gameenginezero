@@ -31,7 +31,10 @@ public class StateProviderFromMap implements IStateProvider {
 
 		Map<String, Object> metadata = new LinkedHashMap<>();
 		metadata.putAll(gameInfo.getConstants());
-		metadata.putAll(PepperMapHelper.getRequiredMap(setup, "metadata"));
+
+		// Optionally as may be missing on unit-tests
+		PepperMapHelper.<Map<String, ?>>getOptionalAs(setup, "metadata")
+				.ifPresent(setupMetadata -> metadata.putAll(setupMetadata));
 
 		return new GameState(plateau, ImmutableMap.copyOf(metadata));
 	}

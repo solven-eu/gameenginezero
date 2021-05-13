@@ -6,6 +6,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import eu.solven.anytabletop.map.BoardFromMap;
+
 public class GameMapInterpreter {
 	final GameState originalState;
 	final AtomicReference<GameState> mutatedState;
@@ -42,6 +44,17 @@ public class GameMapInterpreter {
 			throw new IllegalArgumentException("Invalid x=" + x);
 		}
 		return row.charAt(x);
+	}
+
+	public char charAt(String x, String y) {
+		if (!BoardFromMap.WILDCARD.equals(y)) {
+			throw new IllegalStateException("Invalid x: " + x);
+		}
+		if (!BoardFromMap.WILDCARD.equals(x)) {
+			throw new IllegalStateException("Invalid y: " + y);
+		}
+
+		throw new UnsupportedOperationException("TODO");
 	}
 
 	public void charAt(int x, int y, char c) {

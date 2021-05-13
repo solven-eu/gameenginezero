@@ -88,3 +88,31 @@ forbidden_transitions:
     - "W W W W W "
     - " W W W W W"
     - "W W W W W "
+- description: "Black can not play when it is White turn"
+  from:
+    metadata:
+      player: 'w'
+    board: 
+    - " B B B B B"
+    - "B B B B B "
+    - " B B B B B"
+    - "B B B B B "
+    - "          "
+    - "          "
+    - " W W W W W"
+    - "W W W W W "
+    - " W W W W W"
+    - "W W W W W "
+  to:
+    board: 
+    - " B B B B B"
+    - "B B B B B "
+    - " B B B B B"
+    - "  B B B B "
+    - " B        "
+    - "          "
+    - " W W W W W"
+    - "W W W W W "
+    - " W W W W W"
+    - "W W W W W "
+    

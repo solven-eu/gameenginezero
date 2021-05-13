@@ -24,6 +24,8 @@ import com.google.common.primitives.Ints;
 import eu.solven.anytabletop.rules.FactMutator;
 
 public class GameModelHelpers {
+	public static final String KEY_MUTATOR = "mutator";
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameModelHelpers.class);
 
 	private static final ParserContext parserContext = new ParserContext();
@@ -38,9 +40,8 @@ public class GameModelHelpers {
 		// Copy current state before mutations
 		facts.asMap().forEach(mutatedFacts::put);
 
-		if (mutatedFacts.asMap().containsKey("mutator")) {
-			// Clone the mutator else a mutation on a clone would rather modify the original
-			mutatedFacts.put("mutator", new FactMutator(mutatedFacts));
+		if (mutatedFacts.asMap().containsKey(KEY_MUTATOR)) {
+			enableMutations(mutatedFacts);
 		}
 
 		return mutatedFacts;
@@ -84,10 +85,13 @@ public class GameModelHelpers {
 			try {
 				evaluated = c.evaluate(facts);
 			} catch (PropertyAccessException e) {
+				// This may happen on condition relying on facts not already present in current context
 				LOGGER.trace("This condition (" + condition + ") is not yet evaluatable", e);
 				evaluated = true;
 			} catch (RuntimeException e) {
-				throw new RuntimeException("Issue with condition: " + condition, e);
+				// This may happen on WILDCARDS
+				LOGGER.trace("This condition (" + condition + ") is not yet evaluatable", e);
+				evaluated = true;
 			}
 			if (!evaluated) {
 				conditionIsOk = false;
@@ -120,16 +124,51 @@ public class GameModelHelpers {
 		return conditionIsOk;
 	}
 
-	public static List<Facts> applyMutators(Facts facts, List<String> mutations) {
-		// Some mutators will generate a set of possible outputs
+	public static Facts applyPointMutators(Facts facts, List<String> mutations) {
+		Facts mutatedFacts = cloneFacts(facts);
+
+		enableMutations(mutatedFacts);
+
+		for (String mutation : mutations) {
+			MVELAction action;
+			try {
+				action = new MVELAction(mutation, parserContext);
+			} catch (RuntimeException e) {
+				throw new IllegalArgumentException("Issue parsing mutation: [[" + mutation + "]]", e);
+			}
+
+			try {
+				action.execute(mutatedFacts);
+			} catch (RuntimeException e) {
+				throw new IllegalArgumentException("Issue executing mutation: [[" + mutation + "]]", e);
+			}
+		}
+
+		mutatedFacts.remove(KEY_MUTATOR);
+
+		mutatedFacts.asMap()
+				.values()
+				.stream()
+				.filter(o -> o instanceof List<?> || o instanceof int[])
+				.findAny()
+				.ifPresent(o -> {
+					throw new IllegalArgumentException("Illegal state: a point mutation lead to a rangeFacts: o=" + o);
+				});
+
+		return mutatedFacts;
+	}
+
+	// Some mutators will generate a set of possible outputs
+	public static List<Facts> applyRangeMutators(Facts facts, List<String> mutations) {
 		List<Facts> outputFacts = new ArrayList<>();
 
 		{
 			Facts enrichedFacts = cloneFacts(facts);
 
 			// Add a mutator, enabling mutation
-			enrichedFacts.put("mutator", new FactMutator(enrichedFacts));
+			enableMutations(enrichedFacts);
 
+			// Consider the input facts as the initial template to which range mutations will be applied
 			outputFacts.add(enrichedFacts);
 		}
 
@@ -193,5 +232,9 @@ public class GameModelHelpers {
 			outputFacts.addAll(outputfacts2);
 		}
 		return outputFacts;
+	}
+
+	public static void enableMutations(Facts facts) {
+		facts.put(KEY_MUTATOR, new FactMutator(facts));
 	}
 }

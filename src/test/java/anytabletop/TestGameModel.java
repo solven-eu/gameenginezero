@@ -19,7 +19,7 @@ public class TestGameModel {
 		List<String> mutations = new ArrayList<>();
 		mutations.add("mutator.put('p',java.util.Arrays.asList(1,-1))");
 
-		List<Facts> output = GameModelHelpers.applyMutators(facts, mutations);
+		List<Facts> output = GameModelHelpers.applyRangeMutators(facts, mutations);
 
 		Assertions.assertThat(output).hasSize(2);
 	}
@@ -33,7 +33,7 @@ public class TestGameModel {
 		mutations.add("mutator.put('p',java.util.Arrays.asList(1,-1))");
 		mutations.add("mutator.put('q',java.util.Arrays.asList(1,-1))");
 
-		List<Facts> output = GameModelHelpers.applyMutators(facts, mutations);
+		List<Facts> output = GameModelHelpers.applyRangeMutators(facts, mutations);
 
 		Assertions.assertThat(output).hasSize(4);
 	}
