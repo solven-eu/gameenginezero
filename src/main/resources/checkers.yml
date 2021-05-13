@@ -56,9 +56,11 @@ gameover_conditions:
   -
     conditions:
       # - "step.equals('before_turn')"
-      - "moves.isEmpty(player)"
+      - "moves.isEmpty()"
     mutations:
-      - "map.loser(player)"
+      - "board.player(player).loses()"
+      - "board.player(player.equals('w') ? 'b' : 'w').wins()"
+      - "board.gameOver()"
 
 allowed_moves:
   -

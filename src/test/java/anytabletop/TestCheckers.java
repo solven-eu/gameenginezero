@@ -231,12 +231,24 @@ public class TestCheckers {
 		Map<String, IGameAgent> robots = generateRandomRobots(model);
 
 		AtomicLongMap<String> playerToWin = AtomicLongMap.create();
+		AtomicLongMap<String> playerToTie = AtomicLongMap.create();
 
 		GameExecutor gameExecutor = new GameExecutor();
-		for (int i = 0; i < 1; i++) {
+		for (int i = 0; i < 10; i++) {
+			// Some game may generate a different state for each game
 			GameState initialState = model.generateInitialState();
 
+			// Let's play with a limited number of rounds (to prevent infinite games)
 			GameState gameOverState = gameExecutor.playTheGame(model, initialState, robots, 5);
+
+			if (model.isGameOver(gameOverState)) {
+				robots.keySet().forEach(player -> {
+					
+				});
+			} else {
+				// Not GameOver: Tie for every player
+				robots.keySet().forEach(playerToTie::getAndIncrement);
+			}
 		}
 
 		playerToWin.asMap().forEach((player, wins) -> {

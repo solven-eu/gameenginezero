@@ -409,7 +409,8 @@ public class GameModel {
 
 		facts.put("map", new GameMapInterpreter(state));
 		facts.put("board", new BoardInterpreter(board));
-
+		facts.put("players", new PlayersInterpreter(state));
+		
 		// Typically used to set the current player
 		state.getMetadata().forEach(facts::put);
 

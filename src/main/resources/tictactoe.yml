@@ -1,0 +1,107 @@
+name: Checkers
+source: https://en.wikipedia.org/wiki/Tic-tac-toe
+
+constrains:
+  -
+    minIncluded: 0
+    maxExcluded: 3
+    variables: 
+      - x
+      - tX
+      - y
+      - tY
+
+board:
+  type: grid
+  width: 3
+  height: 3
+  values: 
+    - ""
+    - "O"
+    - "X"
+
+players:
+  -
+    id: o
+  -
+    id: x
+
+setup:
+  metadata:
+    player: <random>
+  board:
+    - "   "
+    - "   "
+    - "   "
+
+gameover_conditions:
+  -
+    comment: 'Same value along a row'
+    intermediate:
+      - "mutator.put('n',java.util.Arrays.asList(0,1,2)))"
+    conditions:
+      - "step.equals('after_turn')"
+      - "map.charAt(0,n) == map.charAt(1,n)"
+      - "map.charAt(0,n) == map.charAt(2,n)"
+    mutations:
+      - "board.player(player).wins()"
+      - "board.notPlayer(player).loses()"
+      - "board.gameOver()"
+  -
+    comment: 'Same value along a column'
+    intermediate:
+      - "mutator.put('n',java.util.Arrays.asList(0,1,2)))"
+    conditions:
+      - "step.equals('after_turn')"
+      - "map.charAt(n,0) == map.charAt(n,1)"
+      - "map.charAt(n,0) == map.charAt(n,2)"
+    mutations:
+      - "board.player(player).wins()"
+      - "board.notPlayer(player).loses()"
+      - "board.gameOver()"
+  -
+    comment: 'Same value along a diagonal'
+    intermediate:
+      - "mutator.put('n',java.util.Arrays.asList(-1,1)))"
+    conditions:
+      - "step.equals('after_turn')"
+      - "map.charAt(1,1) == map.charAt(1+1,1+n)"
+      - "map.charAt(1,1) == map.charAt(1-1,1-n)"
+    mutations:
+      - "board.player(player).wins()"
+      - "board.notPlayer(player).loses()"
+      - "board.gameOver()"
+
+allowed_moves:
+  -
+    comment: "o plays in an empty cell"
+    conditions:
+      - "player.equals('o')"
+      - "map.charAt(x,y) == ' '"
+    mutations:
+      - "map.charAt(x,y) == 'O'"
+  -
+    comment: "x plays in an empty cell"
+    conditions:
+      - "player.equals('x')"
+      - "map.charAt(x,y) == ' '"
+    mutations:
+      - "map.charAt(x,y) == 'X'"
+
+rendering:
+  - 
+    comment: Black around the board
+    style: "border: black"
+    conditions: 
+    - 
+      "true"
+  -
+    style: "item: light_man"
+    conditions: 
+    - 
+      "map.charAt(x,y) == 'O'"
+  -
+    style: "item: dark_man"
+    conditions: 
+    - 
+      "map.charAt(x,y) == 'X'"
