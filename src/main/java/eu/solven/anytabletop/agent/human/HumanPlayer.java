@@ -7,9 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.choice.IAgentChoice;
+import eu.solven.anytabletop.state.GameState;
 
 public abstract class HumanPlayer implements IGameAgent {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HumanPlayer.class);

@@ -3,8 +3,8 @@ package eu.solven.anytabletop.agent.robot.evaluation;
 import java.util.List;
 
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.choice.IAgentChoice;
+import eu.solven.anytabletop.state.GameState;
 
 /**
  * We prefer the move generating the maximum number of consecutive moves. In many games, having many possible moves

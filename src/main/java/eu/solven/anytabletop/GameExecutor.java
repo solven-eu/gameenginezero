@@ -1,6 +1,7 @@
 package eu.solven.anytabletop;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -8,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.jeasy.rules.api.Facts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,7 @@ import com.google.common.collect.Multimaps;
 
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.choice.IAgentChoice;
+import eu.solven.anytabletop.state.GameState;
 
 public class GameExecutor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameExecutor.class);
@@ -50,21 +53,46 @@ public class GameExecutor {
 		while (!isInterrupted.getAsBoolean()) {
 			GameState currentState = mutatingState;
 
+			if (model.isGameOver("before_players_turn", currentState)) {
+				LOGGER.info("GameOver (explicit)");
+
+				playerIdToAgent.forEach((k, v) -> {
+					v.notifyGameOver(currentState);
+				});
+
+				break;
+			}
+
 			ListMultimap<String, IAgentChoice> agentToActions = computeEachAgentChoices(model, currentState);
 
+			// Some game rely on available moves to determine gameOver
+			playerIdToAgent.forEach((player, agent) -> {
+				List<IAgentChoice> moves = agentToActions.get(player);
+
+				Facts facts = model.makeFacts(currentState);
+
+				facts.put("moves", moves);
+				// facts.put("player", player);
+
+				if (model.isPlayerGameOver(player, "before_player_choose_move", facts)) {
+					currentState.setPlayerGameOver(player);
+				}
+			});
+			
 			if (model.isGameOver(currentState)) {
-				LOGGER.info("GameOver (explicit)");
-				model.notifyGameOverToPlayers(playerIdToAgent, currentState, agentToActions);
+				LOGGER.debug("The game is over");
 				break;
-			} else if (agentToActions.isEmpty()) {
+			}
+
+			if (agentToActions.isEmpty()) {
 				// TODO Some game may require to wait for some time before an action is possible by any agent
-				LOGGER.warn("???GameOver??? (no action available)");
-				model.notifyGameOverToPlayers(playerIdToAgent, currentState, agentToActions);
-				break;
+				// TODO Introduce specific action
+				throw new IllegalStateException("Not a single agent has a single available action");
 			}
 
 			mutatingState = queryAndApplyPlayersAction(model, playerIdToAgent, currentState, agentToActions);
 
+			// after_player_action
 		}
 
 		return mutatingState;

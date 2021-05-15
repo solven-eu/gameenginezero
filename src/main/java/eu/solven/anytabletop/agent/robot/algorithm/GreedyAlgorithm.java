@@ -6,9 +6,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.robot.evaluation.IGameStateEvaluator;
 import eu.solven.anytabletop.choice.IAgentChoice;
+import eu.solven.anytabletop.state.GameState;
 
 /**
  * Will consider any possible 1-move, and keep the one maximizing the {@link IGameStateEvaluator}

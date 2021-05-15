@@ -63,7 +63,9 @@ public class GameModelHelpers {
 			try {
 				evaluated = c.evaluate(facts);
 			} catch (RuntimeException e) {
-				throw new RuntimeException("Issue with condition: " + condition, e);
+				throw new RuntimeException(
+						"Issue with condition: " + condition + " facts keys are: " + facts.asMap().keySet(),
+						e);
 			}
 
 			return !evaluated;
@@ -75,7 +77,7 @@ public class GameModelHelpers {
 	 * @return true if any condition is true or not computable: it is useful to compute conditions early (i.e. before
 	 *         its full context is available)
 	 */
-	public static boolean unsafeLogicalAnd(Facts facts, Collection<String> conditions, ParserContext parserContext) {
+	public static boolean allTrueOrNotReady(Facts facts, Collection<String> conditions, ParserContext parserContext) {
 		boolean conditionIsOk = true;
 
 		for (String condition : conditions) {
@@ -101,7 +103,7 @@ public class GameModelHelpers {
 		return conditionIsOk;
 	}
 
-	public static boolean unsafeLogicalOr(Facts facts, Collection<String> conditions, ParserContext parserContext) {
+	public static boolean oneTrueOrNotReady(Facts facts, Collection<String> conditions, ParserContext parserContext) {
 		boolean conditionIsOk = false;
 
 		for (String condition : conditions) {

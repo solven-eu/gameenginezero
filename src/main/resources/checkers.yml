@@ -39,7 +39,8 @@ players:
 
 setup:
   metadata:
-    player: w
+    custom:
+      playing_player: w
   board:
     - " B B B B B"
     - "B B B B B "
@@ -52,14 +53,16 @@ setup:
     - " W W W W W"
     - "W W W W W "
 
-gameover_conditions:
+# Default game gameOver: the last standing player wins
+gameover:
   -
+    comment: "Player loses when it is its turn but nothing can be done"
     conditions:
-      # - "step.equals('before_turn')"
+      - "game_step.equals('before_choosing_move')"
+      - "player.equals(playingPlayer)"
       - "moves.isEmpty()"
     mutations:
       - "board.player(player).loses()"
-      - "board.player(player.equals('w') ? 'b' : 'w').wins()"
       - "board.gameOver()"
 
 allowed_moves:
@@ -70,13 +73,14 @@ allowed_moves:
       - "mutator.put('tY',y+1)"
       - "mutator.put('newPiece',tY == board.getIntProperty('height') - 1 ? 'X':'W')"
     conditions:
-      - "player.equals('w')"
+      - "playing_player.equals('w')"
+      - "playing_player.equals(player)"
       - "map.charAt(x,y) == 'W'"
       - "map.charAt(tX,tY) != 'W' && map.charAt(tX,tY) != 'X'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','b')"
+      - "map.updateMetadata('playing_player','b')"
   -
     comment: "White goes leftUp"
     intermediate:
@@ -84,13 +88,14 @@ allowed_moves:
       - "mutator.put('tY',y+1)"
       - "mutator.put('newPiece',tY == board.getIntProperty('height') - 1 ? 'X':'W')"
     conditions:
-      - "player.equals('w')"
+      - "playing_player.equals('w')"
+      - "playing_player.equals(player)"
       - "map.charAt(x,y) == 'W'"
       - "map.charAt(tX,tY) != 'W' && map.charAt(tX,tY) != 'X'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','b')"
+      - "map.updateMetadata('playing_player','b')"
   -
     comment: "CrownedWhite"
     intermediate:
@@ -101,13 +106,14 @@ allowed_moves:
       - "mutator.put('tY',y+(n*q))"
       - "mutator.put('newPiece','X')"
     conditions:
-      - "player.equals('w')"
+      - "playing_player.equals('w')"
+      - "playing_player.equals(player)"
       - "map.charAt(x,y) == 'X'"
       - "map.charAt(tX,tY) != 'W' && map.charAt(tX,tY) != 'X'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','b')"
+      - "map.updateMetadata('playing_player','b')"
   -
     comment: "Black goes rightDown"
     intermediate:
@@ -115,13 +121,14 @@ allowed_moves:
       - "mutator.put('tY',y-1)"
       - "mutator.put('newPiece',tY == 0 ? 'C':'B')"
     conditions:
-      - "player.equals('b')"
+      - "playing_player.equals('b')"
+      - "playing_player.equals(player)"
       - "map.charAt(x,y) == 'B'"
       - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','w')"
+      - "map.updateMetadata('playing_player','w')"
   -
     comment: "Black goes leftDown"
     intermediate:
@@ -129,13 +136,14 @@ allowed_moves:
       - "mutator.put('tY',y-1)"
       - "mutator.put('newPiece',tY == 0 ? 'C':'B')"
     conditions:
-      - "player.equals('b')"
+      - "playing_player.equals('b')"
+      - "playing_player.equals(player)"
       - "map.charAt(x,y) == 'B'"
       - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','w')"
+      - "map.updateMetadata('playing_player','w')"
   -
     comment: "CrownedDark"
     intermediate:
@@ -146,13 +154,14 @@ allowed_moves:
       - "mutator.put('tY',y+(n*q))"
       - "mutator.put('newPiece','C')"
     conditions:
-      - "player.equals('b')"
+      - "playing_player.equals('b')"
+      - "playing_player.equals(player)"
       - "map.charAt(x,y) == 'C'"
       - "map.charAt(tX,tY) != 'B' && map.charAt(tX,tY) != 'C'"
     mutations:
       - "map.charAt(x,y,' ')"
       - "map.charAt(tX,tY,newPiece)"
-      - "map.updateMetadata('player','w')"
+      - "map.updateMetadata('playing_player','w')"
 
 rendering:
   - 

@@ -1,4 +1,4 @@
-package anytabletop;
+package anytabletop.checkers;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;

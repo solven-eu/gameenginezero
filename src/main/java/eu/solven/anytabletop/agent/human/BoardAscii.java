@@ -22,9 +22,9 @@ import cormoran.pepper.collection.PepperMapHelper;
 import eu.solven.anytabletop.GameInfo;
 import eu.solven.anytabletop.GameModel;
 import eu.solven.anytabletop.GameModelHelpers;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
+import eu.solven.anytabletop.state.GameState;
 
 public class BoardAscii {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BoardAscii.class);
@@ -48,8 +48,8 @@ public class BoardAscii {
 	public static String toAscii(GameModel gameModel, GameState currentState) {
 		IRender boardRender = new Render();
 		IContextBuilder boardBuilder = boardRender.newBuilder();
-		int width = PepperMapHelper.getRequiredNumber(currentState.getMetadata(), "maxX").intValue();
-		int height = PepperMapHelper.getRequiredNumber(currentState.getMetadata(), "maxY").intValue();
+		int width = gameModel.getBoard().getIntProperty("width");
+		int height = gameModel.getBoard().getIntProperty("height");
 
 		int maxRow = squareSize * height;
 		boardBuilder.width(adjustX(width, 0)).height(maxRow);

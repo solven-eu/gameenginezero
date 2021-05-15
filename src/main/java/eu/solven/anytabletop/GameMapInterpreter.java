@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import eu.solven.anytabletop.map.BoardFromMap;
+import eu.solven.anytabletop.state.GameState;
+import eu.solven.anytabletop.state.GameStateMetadata;
 
 public class GameMapInterpreter {
 	final GameState originalState;
@@ -65,17 +67,18 @@ public class GameMapInterpreter {
 		int rowIndex = rows.length - y - 1;
 		rows[rowIndex] = rows[rowIndex].substring(0, x) + c + rows[rowIndex].substring(x + 1);
 
-		mutatedState.set(new GameState(Stream.of(rows).collect(Collectors.joining(System.lineSeparator())),
-				latest.getMetadata()));
+		String boardState = Stream.of(rows).collect(Collectors.joining(System.lineSeparator()));
+		mutatedState.set(new GameState(boardState, latest.getMetadataAsMap()));
 	}
 
 	public void updateMetadata(String key, Object value) {
 		GameState latestState = mutatedState.get();
 
 		Map<String, Object> updatedMetadata = new LinkedHashMap<>();
-		updatedMetadata.putAll(latestState.getMetadata());
+		updatedMetadata.putAll(latestState.getCustomMetadata());
 		updatedMetadata.put(key, value);
 
-		mutatedState.set(new GameState(latestState.getState(), updatedMetadata));
+		GameStateMetadata gameStateMetadata = new GameStateMetadata(updatedMetadata, latestState.getPlayersMetadata());
+		mutatedState.set(new GameState(latestState.getState(), gameStateMetadata));
 	}
 }

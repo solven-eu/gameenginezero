@@ -1,10 +1,11 @@
-package anytabletop;
+package anytabletop.checkers;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.assertj.core.api.Assertions;
@@ -26,12 +27,12 @@ import eu.solven.anytabletop.GameExecutor;
 import eu.solven.anytabletop.GameInfo;
 import eu.solven.anytabletop.GameMapInterpreter;
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.IPlateauCoordinate;
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.agent.robot.RobotRandomOption;
 import eu.solven.anytabletop.choice.IAgentChoice;
 import eu.solven.anytabletop.rules.GameRulesLoader;
+import eu.solven.anytabletop.state.GameState;
 
 public class TestCheckers {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TestCheckers.class);
@@ -60,11 +61,11 @@ public class TestCheckers {
 			GameState toState = model.loadState(PepperMapHelper.getRequiredMap(allowed, "to"));
 
 			// We implicitly consider the next player given the (optional) player metadata
-			String playerId = PepperMapHelper.getRequiredString(fromState.getMetadata(), "player");
+			String playerId = PepperMapHelper.getRequiredString(fromState.getCustomMetadata(), "playing_player");
 			List<IAgentChoice> allPossibleActions = model.nextPossibleActions(fromState, playerId);
 
 			List<GameState> possibleToGameState = allPossibleActions.stream()
-					.map(a -> model.applyActions(fromState, Map.of("somePlayer", a)))
+					.map(a -> model.applyActions(fromState, Map.of(playerId, a)))
 					.collect(Collectors.toList());
 
 			if (possibleToGameState.stream().filter(gs -> gs.containsState(toState)).findAny().isEmpty()) {
@@ -134,7 +135,7 @@ public class TestCheckers {
 			GameState toState = model.loadState(PepperMapHelper.getRequiredMap(allowed, "to"));
 
 			// We implicitly consider the next player given the (optional) player metadata
-			String playerId = PepperMapHelper.getRequiredString(fromState.getMetadata(), "player");
+			String playerId = PepperMapHelper.getRequiredString(fromState.getCustomMetadata(), "playing_player");
 			List<IAgentChoice> allPossibleActions = model.nextPossibleActions(fromState, playerId);
 
 			List<GameState> possibleGameState = allPossibleActions.stream()
@@ -171,7 +172,7 @@ public class TestCheckers {
 	public void testInitialState() throws JsonParseException, JsonMappingException, IOException {
 		GameState initialState = model.generateInitialState();
 
-		Assertions.assertThat(model.isGameOver(initialState)).isFalse();
+		Assertions.assertThat(model.isGameOver("any", initialState)).isFalse();
 
 		// Next is white
 		Assertions.assertThat(model.nextPossibleActions(initialState, "w")).isNotEmpty();
@@ -188,6 +189,7 @@ public class TestCheckers {
 		GameState stateAfterTurns = gameExecutor.playTheGame(model, initialState, robots, 1);
 
 		Assertions.assertThat(model.isGameOver(stateAfterTurns)).isFalse();
+		Assertions.assertThat(model.isGameOver("any", stateAfterTurns)).isFalse();
 
 		// Next is Black
 		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "w")).isEmpty();
@@ -203,7 +205,7 @@ public class TestCheckers {
 
 		GameState stateAfterTurns = gameExecutor.playTheGame(model, initialState, robots, 2);
 
-		Assertions.assertThat(model.isGameOver(stateAfterTurns)).isFalse();
+		Assertions.assertThat(model.isGameOver("any", stateAfterTurns)).isFalse();
 
 		// Next is white
 		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "w")).isNotEmpty();
@@ -219,7 +221,7 @@ public class TestCheckers {
 
 		GameState stateAfterTurns = gameExecutor.playTheGame(model, initialState, robots, 3);
 
-		Assertions.assertThat(model.isGameOver(stateAfterTurns)).isFalse();
+		Assertions.assertThat(model.isGameOver("any", stateAfterTurns)).isFalse();
 
 		// Next is white
 		Assertions.assertThat(model.nextPossibleActions(stateAfterTurns, "w")).isEmpty();
@@ -243,7 +245,12 @@ public class TestCheckers {
 
 			if (model.isGameOver(gameOverState)) {
 				robots.keySet().forEach(player -> {
-					
+					Optional<Boolean> won =
+							PepperMapHelper.getOptionalAs(gameOverState.getPlayersMetadata().get(player), "won");
+
+					if (won.isPresent() && won.get()) {
+						playerToWin.incrementAndGet(player);
+					}
 				});
 			} else {
 				// Not GameOver: Tie for every player

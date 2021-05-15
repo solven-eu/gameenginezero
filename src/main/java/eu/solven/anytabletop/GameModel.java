@@ -35,8 +35,11 @@ import eu.solven.anytabletop.choice.IAgentChoice;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
 import eu.solven.anytabletop.mutations.SingleAndRangeMutations;
+import eu.solven.anytabletop.state.GameState;
 
 public class GameModel {
+	public static final String KEY_PLAYER = "player";
+
 	private static final String KEY_INTERMEDIATE = "intermediate";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameModel.class);
@@ -57,9 +60,9 @@ public class GameModel {
 
 	final Map<String, Object> constants = new LinkedHashMap<>();
 
-	final List<Map<String, ?>> allowedMoves = new ArrayList<>();
+	final List<Map<String, ?>> allowedRangeMoves = new ArrayList<>();
 
-	final Set<String> allMovesConditions = new LinkedHashSet<>();
+	final Set<String> allRangeMovesConditions = new LinkedHashSet<>();
 
 	final GameInfo gameInfo;
 
@@ -75,11 +78,11 @@ public class GameModel {
 		board = new BoardFromMap(gameInfo.getBoard());
 		gameStateManager = new StateProviderFromMap(gameInfo);
 
-		allowedMoves.addAll(gameInfo.getAllowedMoves());
+		allowedRangeMoves.addAll(gameInfo.getAllowedMoves());
 
-		allowedMoves.forEach(move -> {
+		allowedRangeMoves.forEach(move -> {
 			List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
-			allMovesConditions.addAll(conditions);
+			allRangeMovesConditions.addAll(conditions);
 		});
 	}
 
@@ -100,18 +103,76 @@ public class GameModel {
 	}
 
 	public boolean isGameOver(GameState currentState) {
+		int nbPlayingPlayers = 0;
+
+		for (PlayerPojo player : getGameInfo().getPlayers()) {
+			if (!isGameOver(currentState, player)) {
+				nbPlayingPlayers++;
+			}
+		}
+
+		return nbPlayingPlayers == 0;
+	}
+
+	private boolean isGameOver(GameState state, PlayerPojo player) {
+		Optional<Boolean> optGameOver =
+				PepperMapHelper.getOptionalAs(state.getPlayersMetadata(), player.getId(), "game_over");
+		// If not explicitly gameOver, they the playing
+		return optGameOver.orElse(Boolean.FALSE);
+	}
+
+	public boolean isGameOver(String gameStep, GameState currentState) {
 		Facts facts = this.makeFacts(currentState);
 
-		// facts.put("set", "before_turn");
+		return isGameOver(gameStep, facts);
+	}
+
+	public boolean isGameOver(String gameStep, Facts facts) {
+		Facts clone = GameModelHelpers.cloneFacts(facts);
+
+		clone.put("game_step", gameStep);
 
 		gameInfo.getGameoverConditions().stream().filter(c -> {
 			List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
 
-			Set<String> variables = facts.asMap().keySet();
+			Set<String> variables = clone.asMap().keySet();
 
 			List<String> winningPlayers = gameInfo.getPlayers().stream().map(PlayerPojo::getId).filter(player -> {
-				Facts playerFacts = GameModelHelpers.cloneFacts(facts);
-				playerFacts.put("player", player);
+				Facts playerFacts = GameModelHelpers.cloneFacts(clone);
+				playerFacts.put(KEY_PLAYER, player);
+
+				List<String> allConditions = ImmutableList.<String>builder()
+						.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+						.addAll(conditions)
+						.build();
+
+				return GameModelHelpers.logicalAnd(playerFacts, allConditions, parserContext);
+			}).collect(Collectors.toList());
+
+			// - "step.equals()"
+			// - "player.equals('b')"
+			// - "moves.isEmpty()"
+
+			return !winningPlayers.isEmpty();
+		});
+
+		return false;
+	}
+
+	public boolean isPlayerGameOver(String playerId, String gameStep, Facts facts) {
+		Facts clone = GameModelHelpers.cloneFacts(facts);
+
+		clone.put("game_step", gameStep);
+		clone.put(KEY_PLAYER, playerId);
+
+		gameInfo.getGameoverConditions().stream().filter(c -> {
+			List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
+
+			Set<String> variables = clone.asMap().keySet();
+
+			List<String> winningPlayers = gameInfo.getPlayers().stream().map(PlayerPojo::getId).filter(player -> {
+				Facts playerFacts = GameModelHelpers.cloneFacts(clone);
+				playerFacts.put(KEY_PLAYER, player);
 
 				List<String> allConditions = ImmutableList.<String>builder()
 						.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
@@ -165,14 +226,13 @@ public class GameModel {
 	public List<IAgentChoice> nextPossibleActions(GameState currentState, String playerId) {
 		Facts facts = makeFacts(currentState);
 
-		Object presetPlayer = facts.get("player");
-		if (null == presetPlayer) {
-			// The game does not manage manually the allowed players: all players may have an action on any turn
-			facts.put("player", playerId);
-		} else if (!presetPlayer.equals(playerId)) {
-			LOGGER.debug("The player is preset to: {} while reauested choices are for: {}", presetPlayer, playerId);
-			return Collections.emptyList();
+		if (null != facts.get(KEY_PLAYER)) {
+			// Due to an invalid custom metadata?
+			throw new IllegalArgumentException("It is forbidden to receive a fact named: " + KEY_PLAYER);
 		}
+
+		// The game does not manage manually the allowed players: all players may have an action on any turn
+		facts.put(KEY_PLAYER, playerId);
 
 		List<IAgentChoice> availableActions = new ArrayList<>();
 
@@ -183,13 +243,13 @@ public class GameModel {
 
 			// board.wildcard(boardWildcardFacts);
 
-			playedAllowedMoves = allowedMoves.stream().filter(m -> {
+			playedAllowedMoves = allowedRangeMoves.stream().filter(m -> {
 				// Reject early if none of these coordinates is valid
 				List<String> allConditions =
-						ImmutableList.<String>builder().addAll(getGenericConditions(boardWildcardFacts)).build();
+						ImmutableList.<String>builder().addAll(getBoardConditions(boardWildcardFacts)).build();
 
 				boolean conditionIsOk =
-						GameModelHelpers.unsafeLogicalAnd(boardWildcardFacts, allConditions, parserContext);
+						GameModelHelpers.allTrueOrNotReady(boardWildcardFacts, allConditions, parserContext);
 
 				if (!conditionIsOk) {
 					LOGGER.debug("Given player {}, move {} is not allowed", playerId, m);
@@ -219,7 +279,7 @@ public class GameModel {
 			String playerId,
 			Facts originalFacts,
 			IPlateauCoordinate coordinate) {
-		return nextPossibleActions(currentState, playerId, originalFacts, coordinate, allowedMoves);
+		return nextPossibleActions(currentState, playerId, originalFacts, coordinate, allowedRangeMoves);
 	}
 
 	public List<IAgentChoice> nextPossibleActions(GameState currentState,
@@ -230,59 +290,54 @@ public class GameModel {
 		Facts coordinatesFacts = GameModelHelpers.cloneFacts(originalFacts);
 		coordinate.asMap().forEach(coordinatesFacts::put);
 
-		coordinatesFacts.put("player", playerId);
+		coordinatesFacts.put(KEY_PLAYER, playerId);
 
-		// Reject early if none of these coordinates is valid
 		{
+			boolean rejectEarly = false;
 
-			List<String> allConditions =
-					ImmutableList.<String>builder().addAll(getGenericConditions(coordinatesFacts)).build();
+			// Reject early if none of these coordinates is valid
+			if (!rejectEarly) {
 
-			boolean conditionIsOk = GameModelHelpers.unsafeLogicalAnd(coordinatesFacts, allConditions, parserContext);
+				List<String> allConditions =
+						ImmutableList.<String>builder().addAll(getBoardConditions(coordinatesFacts)).build();
 
-			if (!conditionIsOk) {
-				// Given the board coordinate, not a single move is eligible
+				boolean conditionIsOk =
+						GameModelHelpers.allTrueOrNotReady(coordinatesFacts, allConditions, parserContext);
+
+				if (!conditionIsOk) {
+					// Given the board coordinate, not a single move is eligible
+					rejectEarly = true;
+				}
+			}
+
+			// Check if at least one move would be compatible with this coordinate
+			if (!rejectEarly) {
+				List<String> allConditions = ImmutableList.<String>builder().addAll(allRangeMovesConditions).build();
+
+				boolean conditionIsOk =
+						GameModelHelpers.oneTrueOrNotReady(coordinatesFacts, allConditions, parserContext);
+
+				if (!conditionIsOk) {
+					// Given the board coordinate, not a single move is eligible
+					rejectEarly = true;
+				}
+			}
+
+			if (rejectEarly) {
 				return Collections.emptyList();
 			}
 		}
 
-		// Check if at least one move would be compatible with this coordinate
-		{
-			List<String> allConditions = ImmutableList.<String>builder().addAll(allMovesConditions).build();
-
-			boolean conditionIsOk = GameModelHelpers.unsafeLogicalOr(coordinatesFacts, allConditions, parserContext);
-
-			if (!conditionIsOk) {
-				// Given the board coordinate, not a single move is eligible
-				return Collections.emptyList();
-			}
-		}
-
-		return allowedMoves.stream().flatMap(move -> {
-			Optional<String> optComment = PepperMapHelper.getOptionalString(move, "comment");
+		return allowedRangeMoves.stream().flatMap(rangeMove -> {
+			Optional<String> optComment = PepperMapHelper.getOptionalString(rangeMove, "comment");
 			LOGGER.debug("Consider move: {}", optComment.orElse("-"));
 			// TODO Group allowedMoves by player clause, in order to discard irrelevant moves early
 			// RegEx: player.equals('b')
 
-			List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
-
-			// Check if at least this move would be compatible with this coordinate
-			{
-				List<String> allConditions = ImmutableList.<String>builder().addAll(allMovesConditions).build();
-
-				boolean conditionIsOk =
-						GameModelHelpers.unsafeLogicalOr(coordinatesFacts, allConditions, parserContext);
-
-				if (!conditionIsOk) {
-					// Given the board coordinate, the move is not compatible
-					return Stream.empty();
-				}
-			}
-
 			// Intermediates should not edit the GameState, but only introduce intermediate variables to help defining a
 			// new state
 			// Some of these variables may be a range type (e.g. any integer in '[0;10[')
-			List<String> intermediates = PepperMapHelper.getRequiredAs(move, KEY_INTERMEDIATE);
+			List<String> intermediates = PepperMapHelper.getRequiredAs(rangeMove, KEY_INTERMEDIATE);
 
 			SingleAndRangeMutations intermediatesSplitted =
 					SingleAndRangeMutations.from(coordinatesFacts, intermediates);
@@ -290,7 +345,43 @@ public class GameModel {
 			Facts factsWithPointIntemediates =
 					GameModelHelpers.applyPointMutators(coordinatesFacts, intermediatesSplitted.getPointMutations());
 
-			List<String> mutations = PepperMapHelper.getRequiredAs(move, "mutations");
+			List<String> conditions = PepperMapHelper.getRequiredAs(rangeMove, "conditions");
+
+			{
+				boolean rejectEarly = false;
+
+				// Check if at least this move would be compatible with this coordinate
+				if (!rejectEarly) {
+					// There might be additional board conditions triggering (e.g. over post-move intermediates)
+					List<String> allConditions = ImmutableList.<String>builder()
+							.addAll(getBoardConditions(coordinatesFacts))
+							.addAll(conditions)
+							.build();
+
+					boolean conditionIsOk = GameModelHelpers
+							.allTrueOrNotReady(factsWithPointIntemediates, allConditions, parserContext);
+
+					if (!conditionIsOk) {
+						// Given the board coordinate, the move is not compatible
+						return Stream.empty();
+					}
+				}
+
+				if (!rejectEarly) {
+					List<String> allConditions =
+							ImmutableList.<String>builder().addAll(allRangeMovesConditions).build();
+
+					boolean conditionIsOk = GameModelHelpers
+							.oneTrueOrNotReady(factsWithPointIntemediates, allConditions, parserContext);
+
+					if (!conditionIsOk) {
+						// Given the board coordinate, the move is not compatible
+						return Stream.empty();
+					}
+				}
+			}
+
+			List<String> mutations = PepperMapHelper.getRequiredAs(rangeMove, "mutations");
 
 			// Mutate with intermediate/hidden variables
 			return GameModelHelpers
@@ -299,7 +390,7 @@ public class GameModel {
 					.flatMap(agentOptionFacts -> {
 						{
 							List<String> allConditions = ImmutableList.<String>builder()
-									.addAll(getGenericConditions(agentOptionFacts))
+									.addAll(getBoardConditions(agentOptionFacts))
 									.addAll(conditions)
 									.build();
 
@@ -320,7 +411,7 @@ public class GameModel {
 		}).collect(Collectors.toList());
 	}
 
-	private List<? extends String> getGenericConditions(Facts coordinatesFacts) {
+	private List<? extends String> getBoardConditions(Facts coordinatesFacts) {
 		return constrainsToConditions(gameInfo.getConstrains(), coordinatesFacts.asMap().keySet());
 	}
 
@@ -410,9 +501,9 @@ public class GameModel {
 		facts.put("map", new GameMapInterpreter(state));
 		facts.put("board", new BoardInterpreter(board));
 		facts.put("players", new PlayersInterpreter(state));
-		
+
 		// Typically used to set the current player
-		state.getMetadata().forEach(facts::put);
+		state.getCustomMetadata().forEach(facts::put);
 
 		return facts;
 	}
@@ -425,63 +516,63 @@ public class GameModel {
 	 * @param currentState
 	 * @param availableChoices
 	 */
-	public void notifyGameOverToPlayers(Map<String, IGameAgent> playerIdToAgent,
-			GameState currentState,
-			ListMultimap<String, IAgentChoice> availableChoices) {
-		GameChoiceInterpreter interpreter = new GameChoiceInterpreter(availableChoices);
-
-		Facts baseFacts = this.makeFacts(currentState);
-		baseFacts.put("moves", interpreter);
-
-		playerIdToAgent.forEach((playerId, agent) -> {
-			// List<IAgentChoice> choices = availableChoices.get(playerId);
-
-			AtomicBoolean lose = new AtomicBoolean();
-			AtomicBoolean win = new AtomicBoolean();
-
-			gameInfo.getGameoverConditions().forEach(c -> {
-				if (lose.get() || win.get()) {
-					// We must not consider additional rules
-					return;
-				}
-
-				List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
-
-				Facts playerFacts = GameModelHelpers.cloneFacts(baseFacts);
-				playerFacts.put("player", playerId);
-
-				Set<String> variables = playerFacts.asMap().keySet();
-
-				List<String> allConditions = ImmutableList.<String>builder()
-						.addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
-						.addAll(conditions)
-						.build();
-
-				boolean trigger = GameModelHelpers.logicalAnd(playerFacts, allConditions, parserContext);
-
-				if (trigger) {
-
-				}
-			});
-
-			// List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
-			//
-			// Set<String> variables = facts.asMap().keySet();
-			//
-			// List<String> winningPlayers = gameInfo.getPlayers().stream().map(PlayerPojo::getId).filter(player -> {
-			// Facts playerFacts = cloneFacts(facts);
-			// playerFacts.put("player", player);
-			//
-			// List<String> allConditions = ImmutableList.<String>builder()
-			// .addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
-			// .addAll(conditions)
-			// .build();
-			//
-			// return logicalAnd(playerFacts, allConditions, parserContext);
-			// }).collect(Collectors.toList());
-
-		});
-	}
+	// public void notifyGameOverToPlayers(Map<String, IGameAgent> playerIdToAgent,
+	// GameState currentState,
+	// ListMultimap<String, IAgentChoice> availableChoices) {
+	// GameChoiceInterpreter interpreter = new GameChoiceInterpreter(availableChoices);
+	//
+	// Facts baseFacts = this.makeFacts(currentState);
+	// baseFacts.put("moves", interpreter);
+	//
+	// playerIdToAgent.forEach((playerId, agent) -> {
+	// // List<IAgentChoice> choices = availableChoices.get(playerId);
+	//
+	// AtomicBoolean lose = new AtomicBoolean();
+	// AtomicBoolean win = new AtomicBoolean();
+	//
+	// gameInfo.getGameoverConditions().forEach(c -> {
+	// if (lose.get() || win.get()) {
+	// // We must not consider additional rules
+	// return;
+	// }
+	//
+	// List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
+	//
+	// Facts playerFacts = GameModelHelpers.cloneFacts(baseFacts);
+	// playerFacts.put("player", playerId);
+	//
+	// Set<String> variables = playerFacts.asMap().keySet();
+	//
+	// List<String> allConditions = ImmutableList.<String>builder()
+	// .addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+	// .addAll(conditions)
+	// .build();
+	//
+	// boolean trigger = GameModelHelpers.logicalAnd(playerFacts, allConditions, parserContext);
+	//
+	// if (trigger) {
+	//
+	// }
+	// });
+	//
+	// // List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
+	// //
+	// // Set<String> variables = facts.asMap().keySet();
+	// //
+	// // List<String> winningPlayers = gameInfo.getPlayers().stream().map(PlayerPojo::getId).filter(player -> {
+	// // Facts playerFacts = cloneFacts(facts);
+	// // playerFacts.put("player", player);
+	// //
+	// // List<String> allConditions = ImmutableList.<String>builder()
+	// // .addAll(constrainsToConditions(gameInfo.getConstrains(), variables))
+	// // .addAll(conditions)
+	// // .build();
+	// //
+	// // return logicalAnd(playerFacts, allConditions, parserContext);
+	// // }).collect(Collectors.toList());
+	//
+	// });
+	// }
 
 	public List<? extends IAgentChoice> debugWhyNotPossible(GameState currentState,
 			String playerId,
@@ -492,7 +583,7 @@ public class GameModel {
 		Facts coordinatesFacts = GameModelHelpers.cloneFacts(originalFacts);
 		coordinate.asMap().forEach(coordinatesFacts::put);
 
-		coordinatesFacts.put("player", playerId);
+		coordinatesFacts.put(KEY_PLAYER, playerId);
 
 		List<String> conditions = PepperMapHelper.getRequiredAs(move, "conditions");
 
@@ -514,7 +605,7 @@ public class GameModel {
 				.stream()
 				.map(agentOptionFacts -> {
 					List<String> allConditions = ImmutableList.<String>builder()
-							.addAll(getGenericConditions(agentOptionFacts))
+							.addAll(getBoardConditions(agentOptionFacts))
 							.addAll(conditions)
 							.build();
 

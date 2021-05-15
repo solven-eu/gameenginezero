@@ -24,7 +24,7 @@ public class GameInfo {
 	protected final Map<String, ?> setup;
 
 	protected final List<PlayerPojo> players;
-	protected final List<Map<String, ?>> gameoverConditions;
+	protected final List<Map<String, ?>> gameover;
 
 	@JsonCreator
 	public GameInfo(@JsonProperty("name") String name,
@@ -35,7 +35,7 @@ public class GameInfo {
 			@JsonProperty("allowed_moves") List<Map<String, ?>> allowedMoves,
 			@JsonProperty("setup") Map<String, ?> setup,
 			@JsonProperty("players") List<PlayerPojo> players,
-			@JsonProperty("gameover_conditions") List<Map<String, ?>> gameoverConditions) {
+			@JsonProperty("gameover") List<Map<String, ?>> gameover) {
 		this.name = name;
 		this.rendering = rendering;
 		this.constants = constants;
@@ -44,7 +44,7 @@ public class GameInfo {
 		this.allowedMoves = allowedMoves;
 		this.setup = setup;
 		this.players = players;
-		this.gameoverConditions = gameoverConditions;
+		this.gameover = gameover;
 	}
 
 	public String getName() {
@@ -83,6 +83,6 @@ public class GameInfo {
 	}
 
 	public List<Map<String, ?>> getGameoverConditions() {
-		return gameoverConditions;
+		return gameover;
 	}
 }

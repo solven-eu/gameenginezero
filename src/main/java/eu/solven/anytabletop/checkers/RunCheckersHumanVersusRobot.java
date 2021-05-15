@@ -10,11 +10,11 @@ import org.springframework.core.io.Resource;
 import eu.solven.anytabletop.GameExecutor;
 import eu.solven.anytabletop.GameInfo;
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.IGameAgent;
 import eu.solven.anytabletop.agent.human.HumanPlayerAwt;
 import eu.solven.anytabletop.agent.robot.RobotRandomOption;
 import eu.solven.anytabletop.rules.GameRulesLoader;
+import eu.solven.anytabletop.state.GameState;
 
 public class RunCheckersHumanVersusRobot {
 	private static final Logger LOGGER = LoggerFactory.getLogger(RunCheckersHumanVersusRobot.class);

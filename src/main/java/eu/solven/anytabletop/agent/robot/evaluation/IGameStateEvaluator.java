@@ -1,7 +1,7 @@
 package eu.solven.anytabletop.agent.robot.evaluation;
 
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
+import eu.solven.anytabletop.state.GameState;
 
 /**
  * Used to give a score to a gameState.

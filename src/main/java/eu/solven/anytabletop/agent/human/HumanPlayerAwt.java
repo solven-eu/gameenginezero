@@ -36,9 +36,9 @@ import cormoran.pepper.collection.PepperMapHelper;
 import cormoran.pepper.thread.PepperExecutorsHelper;
 import eu.solven.anytabletop.GameMapInterpreter;
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.IPlateauCoordinate;
 import eu.solven.anytabletop.choice.IAgentChoice;
+import eu.solven.anytabletop.state.GameState;
 
 public class HumanPlayerAwt extends HumanPlayer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(HumanPlayerAwt.class);
@@ -261,4 +261,9 @@ public class HumanPlayerAwt extends HumanPlayer {
 		}
 	}
 
+	@Override
+	public void notifyGameOver(GameState currentState) {
+		// TODO Show alertBox to user
+		LOGGER.info("The game is over for you (and possibly for all players)");
+	}
 }

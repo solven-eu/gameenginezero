@@ -4,10 +4,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import eu.solven.anytabletop.GameMapInterpreter;
 import eu.solven.anytabletop.GameModel;
-import eu.solven.anytabletop.GameState;
 import eu.solven.anytabletop.agent.robot.evaluation.IGameStateEvaluator;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
+import eu.solven.anytabletop.state.GameState;
 
 /**
  * We consider a position is stronger if it has more possible mens.

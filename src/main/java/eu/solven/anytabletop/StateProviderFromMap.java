@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableMap;
 
 import cormoran.pepper.collection.PepperMapHelper;
+import eu.solven.anytabletop.state.GameState;
 
 public class StateProviderFromMap implements IStateProvider {
 	private static final String EOL = System.lineSeparator();
