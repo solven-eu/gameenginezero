@@ -78,7 +78,7 @@ public class GameExecutor {
 					currentState.setPlayerGameOver(player);
 				}
 			});
-			
+
 			if (model.isGameOver(currentState)) {
 				LOGGER.debug("The game is over");
 				break;
@@ -122,7 +122,7 @@ public class GameExecutor {
 		});
 
 		GameState newState = model.applyActions(currentState, playerToSelectedActions);
-		LOGGER.info("New state:{}{}", System.lineSeparator(), newState);
+		LOGGER.debug("New state:{}{}", System.lineSeparator(), newState);
 
 		return newState;
 	}

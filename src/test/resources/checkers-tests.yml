@@ -122,4 +122,21 @@ forbidden_transitions:
     - "W W W W W "
     - " W W W W W"
     - "W W W W W "
-    
+
+gameovers:
+- description: "Black has no men"
+  from:
+    metadata:
+      custom:
+        playing_player: 'b'
+    board: 
+    - "         W"
+    - "          "
+    - "          "
+    - "          "
+    - "          "
+    - "          "
+    - "          "
+    - "          "
+    - "          "
+    - "          "

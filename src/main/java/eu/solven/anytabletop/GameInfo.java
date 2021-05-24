@@ -5,6 +5,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -13,7 +16,11 @@ import eu.solven.anytabletop.agent.PlayerPojo;
 
 @JsonIgnoreProperties(value = { "source" })
 public class GameInfo {
+	private static final Logger LOGGER = LoggerFactory.getLogger(GameInfo.class);
+
 	protected final String name;
+	protected final String derivesFrom;
+
 	protected final List<Map<String, ?>> rendering;
 	protected final Map<String, ?> constants;
 	protected final List<Map<String, ?>> constrains;
@@ -28,15 +35,21 @@ public class GameInfo {
 
 	@JsonCreator
 	public GameInfo(@JsonProperty("name") String name,
-			@JsonProperty("rendering") List<Map<String, ?>> rendering,
+			@JsonProperty("names") List<String> names,
+			@JsonProperty("derives_from") String derivesFrom,
+			@JsonProperty("renderings") List<Map<String, ?>> rendering,
 			@JsonProperty("constants") Map<String, ?> constants,
 			@JsonProperty("constrains") List<Map<String, ?>> constrains,
 			@JsonProperty("board") Map<String, ?> board,
 			@JsonProperty("allowed_moves") List<Map<String, ?>> allowedMoves,
 			@JsonProperty("setup") Map<String, ?> setup,
 			@JsonProperty("players") List<PlayerPojo> players,
-			@JsonProperty("gameover") List<Map<String, ?>> gameover) {
+			@JsonProperty("gameovers") List<Map<String, ?>> gameover) {
 		this.name = name;
+		LOGGER.debug("{} is also named: {}", name, names);
+
+		this.derivesFrom = derivesFrom;
+
 		this.rendering = rendering;
 		this.constants = constants;
 		this.constrains = constrains;
@@ -49,6 +62,10 @@ public class GameInfo {
 
 	public String getName() {
 		return name;
+	}
+
+	public String getDerivesFrom() {
+		return derivesFrom;
 	}
 
 	public List<? extends Map<String, ?>> getRenderings() {
@@ -82,7 +99,7 @@ public class GameInfo {
 		return players;
 	}
 
-	public List<Map<String, ?>> getGameoverConditions() {
+	public List<Map<String, ?>> getGameovers() {
 		return gameover;
 	}
 }

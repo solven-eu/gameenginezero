@@ -32,6 +32,7 @@ import eu.solven.anytabletop.agent.PlayerPojo;
 import eu.solven.anytabletop.choice.AgentChoice;
 import eu.solven.anytabletop.choice.GameChoiceInterpreter;
 import eu.solven.anytabletop.choice.IAgentChoice;
+import eu.solven.anytabletop.easyrules.EasyRulesHelper;
 import eu.solven.anytabletop.map.BoardFromMap;
 import eu.solven.anytabletop.map.IBoard;
 import eu.solven.anytabletop.mutations.SingleAndRangeMutations;
@@ -73,10 +74,20 @@ public class GameModel {
 
 		rendering.addAll(gameInfo.getRenderings());
 
-		constants.putAll(gameInfo.getConstants());
-
 		board = new BoardFromMap(gameInfo.getBoard());
 		gameStateManager = new StateProviderFromMap(gameInfo);
+
+		gameInfo.getConstants().forEach((k, v) -> {
+			if (v instanceof String) {
+				Facts facts = new Facts();
+
+				facts.put("board", new BoardInterpreter(board));
+
+				constants.put(k, EasyRulesHelper.parseValue(String.valueOf(v), facts.asMap()));
+			} else {
+				constants.put(k, v);
+			}
+		});
 
 		allowedRangeMoves.addAll(gameInfo.getAllowedMoves());
 
@@ -132,7 +143,7 @@ public class GameModel {
 
 		clone.put("game_step", gameStep);
 
-		gameInfo.getGameoverConditions().stream().filter(c -> {
+		gameInfo.getGameovers().stream().filter(c -> {
 			List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
 
 			Set<String> variables = clone.asMap().keySet();
@@ -146,7 +157,7 @@ public class GameModel {
 						.addAll(conditions)
 						.build();
 
-				return GameModelHelpers.logicalAnd(playerFacts, allConditions, parserContext);
+				return GameModelHelpers.logicalAnd(playerFacts, allConditions);
 			}).collect(Collectors.toList());
 
 			// - "step.equals()"
@@ -165,7 +176,7 @@ public class GameModel {
 		clone.put("game_step", gameStep);
 		clone.put(KEY_PLAYER, playerId);
 
-		gameInfo.getGameoverConditions().stream().filter(c -> {
+		gameInfo.getGameovers().stream().filter(c -> {
 			List<String> conditions = PepperMapHelper.getRequiredAs(c, "conditions");
 
 			Set<String> variables = clone.asMap().keySet();
@@ -179,7 +190,7 @@ public class GameModel {
 						.addAll(conditions)
 						.build();
 
-				return GameModelHelpers.logicalAnd(playerFacts, allConditions, parserContext);
+				return GameModelHelpers.logicalAnd(playerFacts, allConditions);
 			}).collect(Collectors.toList());
 
 			// - "step.equals()"
@@ -248,8 +259,7 @@ public class GameModel {
 				List<String> allConditions =
 						ImmutableList.<String>builder().addAll(getBoardConditions(boardWildcardFacts)).build();
 
-				boolean conditionIsOk =
-						GameModelHelpers.allTrueOrNotReady(boardWildcardFacts, allConditions, parserContext);
+				boolean conditionIsOk = GameModelHelpers.allTrueOrNotReady(boardWildcardFacts, allConditions);
 
 				if (!conditionIsOk) {
 					LOGGER.debug("Given player {}, move {} is not allowed", playerId, m);
@@ -301,8 +311,7 @@ public class GameModel {
 				List<String> allConditions =
 						ImmutableList.<String>builder().addAll(getBoardConditions(coordinatesFacts)).build();
 
-				boolean conditionIsOk =
-						GameModelHelpers.allTrueOrNotReady(coordinatesFacts, allConditions, parserContext);
+				boolean conditionIsOk = GameModelHelpers.allTrueOrNotReady(coordinatesFacts, allConditions);
 
 				if (!conditionIsOk) {
 					// Given the board coordinate, not a single move is eligible
@@ -314,8 +323,7 @@ public class GameModel {
 			if (!rejectEarly) {
 				List<String> allConditions = ImmutableList.<String>builder().addAll(allRangeMovesConditions).build();
 
-				boolean conditionIsOk =
-						GameModelHelpers.oneTrueOrNotReady(coordinatesFacts, allConditions, parserContext);
+				boolean conditionIsOk = GameModelHelpers.oneTrueOrNotReady(coordinatesFacts, allConditions);
 
 				if (!conditionIsOk) {
 					// Given the board coordinate, not a single move is eligible
@@ -358,8 +366,8 @@ public class GameModel {
 							.addAll(conditions)
 							.build();
 
-					boolean conditionIsOk = GameModelHelpers
-							.allTrueOrNotReady(factsWithPointIntemediates, allConditions, parserContext);
+					boolean conditionIsOk =
+							GameModelHelpers.allTrueOrNotReady(factsWithPointIntemediates, allConditions);
 
 					if (!conditionIsOk) {
 						// Given the board coordinate, the move is not compatible
@@ -371,8 +379,8 @@ public class GameModel {
 					List<String> allConditions =
 							ImmutableList.<String>builder().addAll(allRangeMovesConditions).build();
 
-					boolean conditionIsOk = GameModelHelpers
-							.oneTrueOrNotReady(factsWithPointIntemediates, allConditions, parserContext);
+					boolean conditionIsOk =
+							GameModelHelpers.oneTrueOrNotReady(factsWithPointIntemediates, allConditions);
 
 					if (!conditionIsOk) {
 						// Given the board coordinate, the move is not compatible
@@ -394,8 +402,7 @@ public class GameModel {
 									.addAll(conditions)
 									.build();
 
-							boolean conditionIsOk =
-									GameModelHelpers.logicalAnd(agentOptionFacts, allConditions, parserContext);
+							boolean conditionIsOk = GameModelHelpers.logicalAnd(agentOptionFacts, allConditions);
 
 							if (!conditionIsOk) {
 								return Stream.empty();
@@ -610,7 +617,7 @@ public class GameModel {
 							.build();
 
 					Optional<String> notEvaluated =
-							GameModelHelpers.filterNotEvaluated(agentOptionFacts, allConditions, parserContext);
+							GameModelHelpers.filterNotEvaluated(agentOptionFacts, allConditions);
 
 					if (notEvaluated.isEmpty()) {
 						List<String> singleValueIntermediates =

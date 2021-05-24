@@ -6,18 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.jeasy.rules.api.Fact;
 import org.jeasy.rules.api.Facts;
 import org.jeasy.rules.mvel.MVELAction;
-import org.mvel2.ParserContext;
-
-import com.google.common.primitives.Ints;
 
 import eu.solven.anytabletop.GameModelHelpers;
+import eu.solven.anytabletop.easyrules.EasyRulesHelper;
 
 public class SingleAndRangeMutations {
-	private static final ParserContext parserContext = new ParserContext();
-
 	protected final List<String> pointMutations;
 	protected final List<String> rangeMutations;
 
@@ -41,17 +36,19 @@ public class SingleAndRangeMutations {
 		AtomicBoolean isRange = new AtomicBoolean();
 
 		mutations.forEach(mutation -> {
-			MVELAction action;
-			try {
-				action = new MVELAction(mutation, parserContext);
-			} catch (RuntimeException e) {
-				throw new IllegalArgumentException("Issue parsing mutation: [[" + mutation + "]]", e);
-			}
+			MVELAction action = EasyRulesHelper.parseActionWithCache(mutation);
 
 			try {
 				action.execute(clone);
 			} catch (RuntimeException e) {
 				throw new IllegalArgumentException("Issue executing mutation: [[" + mutation + "]]", e);
+			} catch (IncompatibleClassChangeError e) {
+				// We may observe since relying on a cache:
+				// java.lang.IncompatibleClassChangeError: Method 'java.util.stream.IntStream
+				// java.util.stream.IntStream.range(int, int)' must be InterfaceMethodref constant
+				// TODO This is dangerous as we may end applying twice the same mutation to the same fact
+				action = EasyRulesHelper.parseActionWithoutCache(mutation);
+				action.execute(clone);
 			}
 
 			Map<String, Object> pointToApply = new LinkedHashMap<>();

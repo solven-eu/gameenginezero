@@ -1,9 +1,26 @@
 name: Checkers
 source: http://www.lecomptoirdesjeux.com/regle-jeu-dames.htm
 
-#constants:
-#  maxX: 10
-#  maxY: 10
+names:
+  - American Checkers
+  - Checkers
+  - Straight Checkers
+  - International Draughts
+
+board:
+  type: grid
+  width: 10
+  height: 10
+  values: 
+    - ""
+    - "W"
+    - "X"
+    - "B"
+    - "C"
+
+constants:
+  # BEWARE We hide the array in an Optional else some rules will complain about seeing a rangeFact while expecting and pointFacts
+  n_array: java.util.Optional.of(java.util.stream.IntStream.range(1, board.getIntProperty('height')).toArray())
 
 constrains:
   -
@@ -20,17 +37,6 @@ constrains:
     variables: 
       - n
 
-board:
-  type: grid
-  width: 10
-  height: 10
-  values: 
-    - ""
-    - "W"
-    - "X"
-    - "B"
-    - "C"
-
 players:
   -
     id: w
@@ -40,7 +46,7 @@ players:
 setup:
   metadata:
     custom:
-      playing_player: w
+      playing_player: b
   board:
     - " B B B B B"
     - "B B B B B "
@@ -54,7 +60,7 @@ setup:
     - "W W W W W "
 
 # Default game gameOver: the last standing player wins
-gameover:
+gameovers:
   -
     comment: "Player loses when it is its turn but nothing can be done"
     conditions:
@@ -101,7 +107,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('p',java.util.Arrays.asList(1,-1))"
       - "mutator.put('q',java.util.Arrays.asList(1,-1))"
-      - "mutator.put('n',java.util.stream.IntStream.range(1, board.getIntProperty('height')).toArray())"
+      - "mutator.put('n',n_array.get())"
       - "mutator.put('tX',x+(n*p))"
       - "mutator.put('tY',y+(n*q))"
       - "mutator.put('newPiece','X')"
@@ -149,7 +155,7 @@ allowed_moves:
     intermediate:
       - "mutator.put('p',java.util.Arrays.asList(1,-1))"
       - "mutator.put('q',java.util.Arrays.asList(1,-1))"
-      - "mutator.put('n',java.util.stream.IntStream.range(1, board.getIntProperty('height')).toArray())"
+      - "mutator.put('n',n_array.get())"
       - "mutator.put('tX',x+(n*p))"
       - "mutator.put('tY',y+(n*q))"
       - "mutator.put('newPiece','C')"
@@ -163,7 +169,7 @@ allowed_moves:
       - "map.charAt(tX,tY,newPiece)"
       - "map.updateMetadata('playing_player','w')"
 
-rendering:
+renderings:
   - 
     comment: Black around the board
     style: "border: black"

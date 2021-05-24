@@ -1,0 +1,41 @@
+name: Draughts
+source: https://en.wikipedia.org/wiki/English_draughts
+
+names:
+  - American Checkers
+  - Checkers
+  - Straight Checkers
+  - International Draughts
+
+derives_from: classpath:/checkers.yml
+
+board:
+  width: 8
+  height: 8
+
+constrains:
+  -
+    minIncluded: 0
+    maxExcluded: 8
+    variables: 
+      - x
+      - tX
+      - y
+      - tY
+  -
+    minIncluded: 1
+    maxExcluded: 7
+    variables: 
+      - n
+
+setup:
+  board:
+    - " B B B B"
+    - "B B B B "
+    - " B B B B"
+    - "B B B B "
+    - "        "
+    - "        "
+    - " W W W W"
+    - "W W W W "
+    - " W W W W"

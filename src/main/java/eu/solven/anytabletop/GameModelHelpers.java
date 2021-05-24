@@ -15,20 +15,21 @@ import org.jeasy.rules.mvel.MVELAction;
 import org.jeasy.rules.mvel.MVELCondition;
 import org.mvel2.ParserContext;
 import org.mvel2.PropertyAccessException;
+import org.mvel2.UnresolveablePropertyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 
+import eu.solven.anytabletop.easyrules.EasyRulesHelper;
 import eu.solven.anytabletop.rules.FactMutator;
 
 public class GameModelHelpers {
 	public static final String KEY_MUTATOR = "mutator";
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(GameModelHelpers.class);
-
-	private static final ParserContext parserContext = new ParserContext();
 
 	protected GameModelHelpers() {
 		// hidden
@@ -47,17 +48,15 @@ public class GameModelHelpers {
 		return mutatedFacts;
 	}
 
-	public static boolean logicalAnd(Facts facts, Collection<String> conditions, ParserContext parserContext) {
-		return filterNotEvaluated(facts, conditions, parserContext).isEmpty();
+	public static boolean logicalAnd(Facts facts, Collection<String> conditions) {
+		return filterNotEvaluated(facts, conditions).isEmpty();
 	}
 
-	public static Optional<String> filterNotEvaluated(Facts facts,
-			Collection<String> conditions,
-			ParserContext parserContext) {
+	public static Optional<String> filterNotEvaluated(Facts facts, Collection<String> conditions) {
 		// We return only the first not evaluated condition, as remaining conditions may not be evaluatable (e.g. if we
 		// are consider a coordinate our of the board, we should not try checking the value as given position)
 		return conditions.stream().filter(condition -> {
-			MVELCondition c = new MVELCondition(condition, parserContext);
+			MVELCondition c = EasyRulesHelper.parseConditionsWithCache(condition);
 
 			boolean evaluated;
 			try {
@@ -77,11 +76,11 @@ public class GameModelHelpers {
 	 * @return true if any condition is true or not computable: it is useful to compute conditions early (i.e. before
 	 *         its full context is available)
 	 */
-	public static boolean allTrueOrNotReady(Facts facts, Collection<String> conditions, ParserContext parserContext) {
+	public static boolean allTrueOrNotReady(Facts facts, Collection<String> conditions) {
 		boolean conditionIsOk = true;
 
 		for (String condition : conditions) {
-			MVELCondition c = new MVELCondition(condition, parserContext);
+			MVELCondition c = EasyRulesHelper.parseConditionsWithCache(condition);
 
 			boolean evaluated;
 			try {
@@ -103,11 +102,18 @@ public class GameModelHelpers {
 		return conditionIsOk;
 	}
 
-	public static boolean oneTrueOrNotReady(Facts facts, Collection<String> conditions, ParserContext parserContext) {
+	/**
+	 * Some sort of logical OR, with an unsafe mechanism
+	 * 
+	 * @param facts
+	 * @param conditions
+	 * @return
+	 */
+	public static boolean oneTrueOrNotReady(Facts facts, Collection<String> conditions) {
 		boolean conditionIsOk = false;
 
 		for (String condition : conditions) {
-			MVELCondition c = new MVELCondition(condition, parserContext);
+			MVELCondition c = EasyRulesHelper.parseConditionsWithCache(condition);
 
 			boolean evaluated;
 			try {
@@ -116,7 +122,20 @@ public class GameModelHelpers {
 				LOGGER.trace("This condition (" + condition + ") is not yet evaluatable", e);
 				evaluated = false;
 			} catch (RuntimeException e) {
-				throw new RuntimeException("Issue with condition: " + condition, e);
+				Optional<Throwable> optUnresolvedProperty = Throwables.getCausalChain(e)
+						.stream()
+						.filter(t -> t instanceof UnresolveablePropertyException
+								|| t instanceof PropertyAccessException)
+						.findAny();
+
+				if (optUnresolvedProperty.isPresent()) {
+					LOGGER.trace("This condition (" + condition + ") is not yet evaluatable", e);
+					evaluated = false;
+				} else {
+					throw new RuntimeException(
+							"Issue with condition: " + condition + " Facts keys are: " + facts.asMap().keySet(),
+							e);
+				}
 			}
 			if (evaluated) {
 				conditionIsOk = true;
@@ -132,12 +151,7 @@ public class GameModelHelpers {
 		enableMutations(mutatedFacts);
 
 		for (String mutation : mutations) {
-			MVELAction action;
-			try {
-				action = new MVELAction(mutation, parserContext);
-			} catch (RuntimeException e) {
-				throw new IllegalArgumentException("Issue parsing mutation: [[" + mutation + "]]", e);
-			}
+			MVELAction action = parseAction(mutation);
 
 			try {
 				action.execute(mutatedFacts);
@@ -160,6 +174,10 @@ public class GameModelHelpers {
 		return mutatedFacts;
 	}
 
+	private static MVELAction parseAction(String mutation) {
+		return EasyRulesHelper.parseActionWithCache(mutation);
+	}
+
 	// Some mutators will generate a set of possible outputs
 	public static List<Facts> applyRangeMutators(Facts facts, List<String> mutations) {
 		List<Facts> outputFacts = new ArrayList<>();
@@ -175,12 +193,7 @@ public class GameModelHelpers {
 		}
 
 		for (String mutation : mutations) {
-			MVELAction action;
-			try {
-				action = new MVELAction(mutation, parserContext);
-			} catch (RuntimeException e) {
-				throw new IllegalArgumentException("Issue parsing mutation: [[" + mutation + "]]", e);
-			}
+			MVELAction action = parseAction(mutation);
 
 			List<Facts> outputfacts2 = new ArrayList<>();
 

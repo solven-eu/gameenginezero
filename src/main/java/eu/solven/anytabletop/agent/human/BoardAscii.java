@@ -75,7 +75,7 @@ public class BoardAscii {
 
 				Facts renderingFacts = GameModelHelpers.cloneFacts(facts);
 
-				boolean conditionIsOk = GameModelHelpers.logicalAnd(renderingFacts, conditions, parserContext);
+				boolean conditionIsOk = GameModelHelpers.logicalAnd(renderingFacts, conditions);
 
 				if (conditionIsOk) {
 					String style = PepperMapHelper.getRequiredAs(rendering, "style");

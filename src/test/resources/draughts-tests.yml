@@ -1,0 +1,17 @@
+gameovers:
+# https://boardgames.stackexchange.com/questions/44845/a-state-with-no-more-possible-moves
+- description: "Black has men but no move"
+  from:
+    metadata:
+      custom:
+        playing_player: 'b'
+    board: 
+    - "          "
+    - "B B B   "
+    - " B B B B"
+    - "B W B B "
+    - " W   B W"
+    - "W W W W "
+    - " W W   W"
+    - "  W     "
+    
